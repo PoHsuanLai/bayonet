@@ -1,0 +1,54 @@
+# cargo-deny gate. Run: cargo deny check advisories bans licenses sources
+#
+# A dependency whose licence is not listed fails the gate rather than being noticed later by
+# someone reading Cargo.lock.
+
+[graph]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[licenses]
+# bayonet is MIT OR Apache-2.0, and only permissive licences may reach it. Copyleft (MPL, LGPL,
+# GPL, AGPL, EUPL) is not allowed: CONVENTIONS section 15.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "Unicode-3.0",
+]
+confidence-threshold = 0.9
+
+[advisories]
+# Each ignore says why it is safe to carry and what would end it. A new advisory not listed here
+# fails the gate.
+ignore = []
+
+[bans]
+# Two versions of one crate are a size and noise cost, not a fault: they warn and never fail.
+multiple-versions = "warn"
+wildcards = "deny"
+# Run, never link (CONVENTIONS section 15): a codec binding is a plugin's business, never a
+# dependency of the library that runs plugins.
+deny = [
+    { name = "rsmpv" },
+    { name = "rsmpv-sys" },
+    { name = "libmpv" },
+    { name = "libmpv-sys" },
+    { name = "ffmpeg-next" },
+    { name = "ffmpeg-sys-next" },
+    { name = "libheif-rs" },
+    { name = "libheif-sys" },
+    { name = "libraw-rs" },
+    { name = "libraw-sys" },
+    { name = "rsraw" },
+    { name = "rawloader" },
+    { name = "rawler" },
+    # The library is portable: no bus, no UI toolkit, no async runtime.
+    { name = "zbus" },
+    { name = "tokio" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

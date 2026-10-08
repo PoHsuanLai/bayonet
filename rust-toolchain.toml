@@ -1,0 +1,5 @@
+# One pinned toolchain, the one the programs that use bayonet build on. Raised with them.
+[toolchain]
+channel = "1.98.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

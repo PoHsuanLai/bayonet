@@ -1,0 +1,65 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # rust-toolchain.toml pins the toolchain; rustup installs it on first use.
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features --locked -- -D warnings
+
+      - name: Clippy without the host half
+        run: cargo clippy --no-default-features --all-targets --locked -- -D warnings
+
+      # The tests start the demo plugin, an example that `cargo test` builds.
+      - name: Test
+        run: cargo test --locked
+
+      - name: Docs
+        run: cargo doc --no-deps --locked
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+      - name: Dependencies (advisories, bans, licenses, sources)
+        run: cargo deny check advisories bans licenses sources
+
+  # The wire, manifests, discovery and registry build off Unix too.
+  portable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        target: [x86_64-pc-windows-msvc, aarch64-apple-darwin]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Target
+        run: rustup target add ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Check
+        run: cargo check --lib --locked --target ${{ matrix.target }}

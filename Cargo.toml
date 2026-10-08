@@ -1,0 +1,56 @@
+[package]
+name = "bayonet"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+license = "MIT OR Apache-2.0"
+description = "Run plugins as separate programs: manifests, discovery, a framed JSON wire, and process handling that contains crashes and hangs. Generic over the host's capability type."
+repository = "https://github.com/PoHsuanLai/bayonet"
+readme = "README.md"
+keywords = ["plugin", "ipc", "subprocess", "manifest"]
+categories = ["development-tools", "os"]
+
+[features]
+# The host half: reading manifests, discovering and ranking them, and (on Unix) running the
+# programs they name. A plugin program needs only the wire (`default-features = false`), which
+# brings serde, serde_json and thiserror and nothing else.
+default = ["host"]
+host = ["dep:toml", "dep:rustix"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+toml = { version = "1", optional = true }
+
+# Process groups and polling are Unix; the wire, manifests and the registry build everywhere.
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1.1", default-features = false, features = ["std", "event", "process", "time"], optional = true }
+
+# The tests and the demo plugin they run need the host half, and the process handling is Unix.
+[[example]]
+name = "demo_plugin"
+required-features = ["host"]
+
+[[test]]
+name = "capabilities"
+required-features = ["host"]
+
+[[test]]
+name = "run"
+required-features = ["host"]
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+
+# Matching on our own enums names every variant, so adding one is a compile error wherever it
+# matters. Tests may unwrap (clippy.toml).
+[lints.clippy]
+unwrap_used = "deny"
+wildcard_enum_match_arm = "deny"
+match_wildcard_for_single_variants = "deny"
