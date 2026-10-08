@@ -36,12 +36,7 @@ impl Dirs {
     fn discover(&self) -> Discovery<Tool> {
         let user = self.user();
         let system = self.system();
-        discover::<Tool>(&Search {
-            app: "host",
-            user: &user,
-            system: &system,
-            protocol: 1,
-        })
+        discover::<Tool>(&Search::new("host", &user, &system, 1))
     }
 }
 

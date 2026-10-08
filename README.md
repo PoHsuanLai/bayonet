@@ -32,9 +32,9 @@ impl bayonet::run::Protocol for Wire { /* Capability, Request, Message, VERSION,
 Then:
 
 ```rust,ignore
-let found = bayonet::discover::<Provision>(&Search { app: "myapp", user, system, protocol: Wire::VERSION });
+let found = bayonet::discover::<Provision>(&Search::new("myapp", user, system, Wire::VERSION));
 let plugin = found.registry.serving(Cap::Thumbnail, |p| fit(p, &file)).ok_or(missing)?;
-let mut session = Runner::new("myapp", Timeouts::default())
+let mut session = Runner::new("myapp", Timeouts::default().with_silence(Duration::from_secs(10)))
     .open::<Wire, _>(plugin, Cap::Thumbnail, &request, payload_limit)?;
 let reply = session.reply()?;           // one answer, or
 session.stream(cancelled, &Request::Cancel, |id, frame| /* ... */)?;  // a stream of them

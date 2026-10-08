@@ -40,6 +40,12 @@ broke it. If a rule blocks you, say so in the change; never deviate quietly.
 - **Unique, specific names.** No bare generic names at the crate root.
 - **Test helpers are not API.** They live in `tests/support/`, `examples/` or `#[cfg(test)]`.
 - **An API change updates every caller in the same change.** No deprecated alias.
+- **Config structs are `#[non_exhaustive]`,** with `Default` where a default is meaningful, a
+  constructor for the required parts (`Search::new`) and `with_` methods for the rest
+  (`Timeouts::default().with_silence(..)`), so adding a field is not a breaking change. Callers
+  never build one by literal. This is for settings, not for data: vocabulary enums stay exhaustive
+  (a new variant should be a compile error at every `match`), and wire messages and values hosts
+  construct in tables (`Suggestion`, `Greeting`) stay plain structs.
 
 ## 4. Types
 

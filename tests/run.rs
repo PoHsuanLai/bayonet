@@ -40,10 +40,7 @@ fn failure(mode: &str, timeouts: Timeouts, payload_limit: u64) -> RunError<Cap> 
 
 #[test]
 fn a_plugin_that_fails_in_some_way_is_an_error_naming_it() {
-    let hello_fast = Timeouts {
-        hello: Duration::from_millis(300),
-        ..quick()
-    };
+    let hello_fast = quick().with_hello(Duration::from_millis(300));
     // name, mode, timeouts, payload limit, a check on the error
     type Check = fn(&RunError<Cap>) -> bool;
     let cases: Vec<(&str, &str, Timeouts, u64, Check)> = vec![
@@ -170,10 +167,7 @@ fn a_stream_that_reports_progress_may_outlast_the_silence_timeout() {
     let task = Request::Adapt {
         task: "slow".to_owned(),
     };
-    let timeouts = Timeouts {
-        silence: Duration::from_millis(250),
-        ..quick()
-    };
+    let timeouts = quick().with_silence(Duration::from_millis(250));
     let mut session = runner(timeouts)
         .open::<Wire, _>(&plugin, Cap::AgentAdapter, &task, 0)
         .unwrap();

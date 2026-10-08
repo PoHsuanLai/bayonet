@@ -6,8 +6,10 @@ use crate::registry::{Candidate, Origin, Readiness, Registry};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Where to look, and for whom.
+/// Where to look, and for whom. Build it with [`Search::new`]; fields may be added without
+/// breaking a caller.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct Search<'a> {
     /// The host's name: manifests are in `<data dir>/<app>/plugins`.
     pub app: &'a str,
@@ -18,6 +20,19 @@ pub struct Search<'a> {
     pub system: &'a [PathBuf],
     /// The newest protocol version the host speaks.
     pub protocol: u32,
+}
+
+impl<'a> Search<'a> {
+    /// A search for the host called `app`, in the person's directory `user` and the system's
+    /// `system`, for plugins that speak up to `protocol`.
+    pub fn new(app: &'a str, user: &'a Path, system: &'a [PathBuf], protocol: u32) -> Search<'a> {
+        Search {
+            app,
+            user,
+            system,
+            protocol,
+        }
+    }
 }
 
 /// What was found: the registry, and each file that could not become a plugin.

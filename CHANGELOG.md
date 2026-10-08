@@ -18,6 +18,7 @@ versioning.
   then the person's directory, then id; `Registry::serving` takes the host's own fit.
 - The missing-package suggestion: `Package`, `Suggestion`, `suggest`, and `Registry::tool_absent` for
   a plugin that is installed while the system's tool is not.
+- `Search` and `Timeouts` are `#[non_exhaustive]`: built with `Search::new` and `Timeouts::default().with_*`.
 - Running (Unix): `Runner`, `Session` and `Protocol`. A plugin gets a process group of its own, a
   greeting timeout, a silence timeout reset by every message, a cancel grace, and is killed and reaped
   on every path out. Stderr is read and logged; the last line is in a crash's error.

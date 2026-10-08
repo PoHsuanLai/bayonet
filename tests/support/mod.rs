@@ -52,11 +52,10 @@ pub fn demo_program() -> PathBuf {
 /// Timeouts short enough for a test of a hang, long enough for a loaded machine to start a
 /// program.
 pub fn quick() -> Timeouts {
-    Timeouts {
-        hello: Duration::from_secs(10),
-        silence: Duration::from_millis(400),
-        cancel_grace: Duration::from_millis(300),
-    }
+    Timeouts::default()
+        .with_hello(Duration::from_secs(10))
+        .with_silence(Duration::from_millis(400))
+        .with_cancel_grace(Duration::from_millis(300))
 }
 
 pub fn runner(timeouts: Timeouts) -> Runner {
@@ -88,12 +87,7 @@ impl Host {
     }
 
     pub fn discover(&self) -> Discovery<Provision> {
-        discover::<Provision>(&Search {
-            app: "demo",
-            user: &self.root.path().join("user"),
-            system: &[],
-            protocol: 1,
-        })
+        discover::<Provision>(&Search::new("demo", &self.root.path().join("user"), &[], 1))
     }
 
     /// The installed plugin `id`.
