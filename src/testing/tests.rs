@@ -111,15 +111,18 @@ fn a_well_behaved_fake_greets_and_answers_each_request() {
 
 #[test]
 fn each_fault_changes_what_the_fake_writes() {
-    // name, the fault, the ending, the messages written, the stderr
-    let cases: Vec<(&str, Fault, Ending, Vec<Say>, usize)> = vec![
-        ("mute", Fault::Mute, Ending::Mute, vec![], 0),
+    // name, the fault, the ending, the messages written, the stderr's length, and its bytes where
+    // they are pinned
+    #[allow(clippy::type_complexity)]
+    let cases: Vec<(&str, Fault, Ending, Vec<Say>, usize, Option<&[u8]>)> = vec![
+        ("mute", Fault::Mute, Ending::Mute, vec![], 0, None),
         (
             "other version",
             Fault::OtherVersion,
             Ending::Finished,
             vec![hello(4, &[1, 2]), Say::Pong(1)],
             0,
+            None,
         ),
         (
             "provides nothing",
@@ -127,6 +130,7 @@ fn each_fault_changes_what_the_fake_writes() {
             Ending::Finished,
             vec![hello(3, &[]), Say::Pong(1)],
             0,
+            None,
         ),
         (
             "hang",
@@ -134,6 +138,18 @@ fn each_fault_changes_what_the_fake_writes() {
             Ending::Hung,
             vec![hello(3, &[1, 2])],
             0,
+            None,
+        ),
+        (
+            "crash: its line, then the code",
+            Fault::CrashOnRequest,
+            Ending::Crashed {
+                code: 3,
+                said: "fake plugin: crashing on purpose".to_owned(),
+            },
+            vec![hello(3, &[1, 2])],
+            33,
+            Some(b"fake plugin: crashing on purpose\n"),
         ),
         (
             "flood",
@@ -141,28 +157,18 @@ fn each_fault_changes_what_the_fake_writes() {
             Ending::Finished,
             vec![hello(3, &[1, 2]), Say::Pong(1)],
             1 << 20,
+            None,
         ),
     ];
-    for (name, fault, ending, messages, flood) in cases {
+    for (name, fault, ending, messages, stderr_len, stderr) in cases {
         let (got, out, err) = serve(Some(fault), &[Ask::Ping(1)]);
         assert_eq!(got, ending, "{name}");
         assert_eq!(said(&out), messages, "{name}");
-        assert_eq!(err.len(), flood, "{name}");
-    }
-}
-
-#[test]
-fn a_crashing_fake_says_its_line_and_ends_with_the_code() {
-    let (ending, out, err) = serve(Some(Fault::CrashOnRequest), &[Ask::Ping(1)]);
-    assert_eq!(said(&out), vec![hello(3, &[1, 2])]);
-    assert_eq!(
-        ending,
-        Ending::Crashed {
-            code: 3,
-            said: "fake plugin: crashing on purpose".to_owned()
+        assert_eq!(err.len(), stderr_len, "{name}: stderr length");
+        if let Some(stderr) = stderr {
+            assert_eq!(err, stderr, "{name}: stderr");
         }
-    );
-    assert_eq!(err, b"fake plugin: crashing on purpose\n");
+    }
 }
 
 #[test]
@@ -198,15 +204,21 @@ fn poll_for_cancel(fault: Option<Fault>, wait: Duration) -> (bool, Vec<Say>) {
 }
 
 #[test]
-fn a_cancel_that_arrives_while_working_is_seen_and_the_next_request_is_kept() {
-    let (seen, pongs) = poll_for_cancel(None, Duration::from_secs(5));
-    assert!(seen);
-    assert_eq!(pongs, vec![Say::Pong(1), Say::Pong(2)]);
-}
-
-#[test]
-fn a_fake_that_ignores_cancel_never_sees_one() {
-    let (seen, pongs) = poll_for_cancel(Some(Fault::IgnoreCancel), Duration::from_millis(200));
-    assert!(!seen);
-    assert_eq!(pongs, vec![Say::Pong(1), Say::Pong(2)]);
+fn a_cancel_is_seen_by_a_fake_that_listens_and_never_by_one_that_ignores_it() {
+    // name, the fault, how long the handler polls, whether it sees the cancel
+    let cases = [
+        ("a cancel that arrives while working", None, 5_000, true),
+        (
+            "a fake that ignores cancel",
+            Some(Fault::IgnoreCancel),
+            200,
+            false,
+        ),
+    ];
+    for (name, fault, wait_ms, want) in cases {
+        let (seen, pongs) = poll_for_cancel(fault, Duration::from_millis(wait_ms));
+        assert_eq!(seen, want, "{name}: seen");
+        // Either way the next request is kept.
+        assert_eq!(pongs, vec![Say::Pong(1), Say::Pong(2)], "{name}: pongs");
+    }
 }

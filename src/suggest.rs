@@ -101,35 +101,29 @@ mod tests {
 
     #[test]
     fn the_first_row_for_the_capability_whose_key_matches_names_its_package() {
-        // name, capability, the type asked about, the package
-        const CASES: &[(&str, &str, &str, Option<&str>)] = &[
+        // name, capability, the type asked about, the package's name, the tool its plugin runs
+        // and the host's handle
+        type Want = Option<(&'static str, Option<&'static str>, u8)>;
+        const CASES: &[(&str, &str, &str, Want)] = &[
             (
                 "a row with no key matches any",
                 "play",
                 "-",
-                Some("app-player"),
+                Some(("app-player", Some("player"), 1)),
             ),
             (
                 "a keyed row matches its key",
                 "lens",
                 "text/x-odd",
-                Some("app-lens"),
+                Some(("app-lens", None, 2)),
             ),
             ("a keyed row skips another key", "lens", "text/plain", None),
             ("an unknown capability", "export", "-", None),
         ];
         for (name, capability, asked, want) in CASES {
             let got = suggest(TABLE, *capability, |key| key.is_none_or(|k| k == *asked))
-                .map(Package::name);
+                .map(|p| (p.name(), p.tool(), p.helper()));
             assert_eq!(got, *want, "{name}");
         }
-    }
-
-    #[test]
-    fn a_package_names_the_tool_its_plugin_runs_and_the_hosts_handle() {
-        assert_eq!(
-            (PLAYER.tool(), PLAYER.helper(), LENS.tool()),
-            (Some("player"), 1, None)
-        );
     }
 }

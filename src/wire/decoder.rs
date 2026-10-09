@@ -93,17 +93,34 @@ mod tests {
 
     #[test]
     fn a_header_over_the_limits_is_refused_before_buffering_its_body() {
-        const CASES: &[(&str, u32, u32)] = &[
-            ("json", MAX_JSON_BYTES + 1, 0),
-            ("payload", 2, MAX_PAYLOAD_BYTES + 1),
+        // name, the JSON length announced, the payload length announced, the error
+        let cases = [
+            (
+                "json",
+                MAX_JSON_BYTES + 1,
+                0,
+                WireError::JsonTooLarge {
+                    len: u64::from(MAX_JSON_BYTES) + 1,
+                    limit: u64::from(MAX_JSON_BYTES),
+                },
+            ),
+            (
+                "payload",
+                2,
+                MAX_PAYLOAD_BYTES + 1,
+                WireError::PayloadTooLarge {
+                    len: u64::from(MAX_PAYLOAD_BYTES) + 1,
+                    limit: u64::from(MAX_PAYLOAD_BYTES),
+                },
+            ),
         ];
-        for (name, json, payload) in CASES {
+        for (name, json, payload, want) in cases {
             let mut header = Vec::new();
             header.extend_from_slice(&json.to_le_bytes());
             header.extend_from_slice(&payload.to_le_bytes());
             let mut decoder = FrameDecoder::new();
             decoder.push(&header);
-            assert!(decoder.next_frame::<Msg>().is_err(), "{name}");
+            assert_eq!(decoder.next_frame::<Msg>().unwrap_err(), want, "{name}");
         }
     }
 

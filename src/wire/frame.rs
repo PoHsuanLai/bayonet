@@ -166,7 +166,7 @@ mod tests {
     }
 
     #[test]
-    fn a_message_or_payload_over_the_limits_is_not_written() {
+    fn a_message_over_the_limit_is_not_written() {
         let long = Msg::Ask {
             text: "x".repeat(MAX_JSON_BYTES as usize),
         };
@@ -174,15 +174,18 @@ mod tests {
             encode_frame(&long, &[]),
             Err(WireError::JsonTooLarge { .. })
         ));
-        let header_only = |json: u32, payload: u32| {
-            let mut bytes = Vec::new();
-            bytes.extend_from_slice(&json.to_le_bytes());
-            bytes.extend_from_slice(&payload.to_le_bytes());
-            bytes
-        };
-        assert!(matches!(
-            read_frame::<_, Msg>(&mut header_only(2, MAX_PAYLOAD_BYTES + 1).as_slice()),
-            Err(WireError::PayloadTooLarge { .. })
-        ));
+    }
+
+    /// The wire format as bytes: two little-endian u32 lengths (JSON, then payload), the JSON,
+    /// the payload. Other programs read these bytes, so they are written out and not computed.
+    #[test]
+    fn a_frame_is_exactly_these_bytes_on_the_wire() {
+        const FRAME: &[u8] =
+            b"\x20\0\0\0\x03\0\0\0{\"kind\":\"ask\",\"v\":{\"text\":\"hi\"}}\xde\xad\xbe";
+        let ask = Msg::Ask { text: "hi".into() };
+        assert_eq!(encode_frame(&ask, &[0xde, 0xad, 0xbe]).unwrap(), FRAME);
+        let frame: Frame<Msg> = read_frame(&mut &FRAME[..]).unwrap();
+        assert_eq!(frame.message, ask);
+        assert_eq!(frame.payload, [0xde, 0xad, 0xbe]);
     }
 }

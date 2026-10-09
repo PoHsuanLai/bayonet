@@ -1,8 +1,9 @@
 use super::*;
-use crate::fixture::{Cap, Tool, manifest_text, probe};
+use crate::fixture::{Cap, Tool, ToolFault, manifest_text, probe};
 use crate::manifest::{Manifest, ManifestError};
 
 type Plugins = Registry<Tool>;
+type Reason = ManifestError<Cap, ToolFault>;
 
 const SUPPORTED: u32 = 1;
 
@@ -35,30 +36,84 @@ fn serving_id(plugins: &Plugins, wanted: &str, exact: &str) -> Option<String> {
 }
 
 #[test]
-fn the_user_directory_overrides_the_system_one_for_an_id() {
-    let system = candidate("tool", 1, Origin::System, "\"video\"");
-    let user = candidate("tool", 1, Origin::User, "\"audio\"");
-    let plugins = Plugins::resolve(vec![system, user], SUPPORTED);
-    assert_eq!(plugins.installed().len(), 1);
-    assert_eq!(plugins.installed()[0].origin, Origin::User);
-    // The user's copy handles audio only, so the system's video is gone with it.
-    assert_eq!(serving_id(&plugins, "video", "-"), None);
-    assert_eq!(serving_id(&plugins, "audio", "-").as_deref(), Some("tool"));
-}
-
-#[test]
-fn a_protocol_beyond_the_hosts_is_set_aside_with_its_reason() {
-    let newer = candidate("tool", 2, Origin::System, "\"video\"");
-    let older = candidate("tool", 1, Origin::User, "\"video\"");
-    let plugins = Plugins::resolve(vec![newer, older], SUPPORTED);
-    assert_eq!(plugins.installed()[0].manifest.protocol, 1);
-    assert_eq!(
-        plugins.unusable()[0].reason,
-        ManifestError::ProtocolUnsupported {
-            protocol: 2,
-            supported: SUPPORTED
+fn two_candidates_for_one_id_leave_one_installed_and_set_the_other_aside() {
+    let video_only = |origin| candidate("tool", 1, origin, "\"video\"");
+    let mut broken = video_only(Origin::User);
+    broken.readiness = Readiness::Unready(ManifestError::FileMissing {
+        path: "/bin/tool".into(),
+    });
+    // name, the candidates, the one installed (origin, protocol), the ones set aside (origin,
+    // reason), and what the registry then serves for probe (kind asked, id serving it)
+    #[allow(clippy::type_complexity)]
+    let cases: Vec<(
+        &str,
+        Vec<Candidate<Tool>>,
+        (Origin, u32),
+        Vec<(Origin, Reason)>,
+        Vec<(&str, Option<&str>)>,
+    )> = vec![
+        (
+            "the user directory overrides the system one for an id",
+            vec![
+                candidate("tool", 1, Origin::System, "\"video\""),
+                candidate("tool", 1, Origin::User, "\"audio\""),
+            ],
+            (Origin::User, 1),
+            vec![],
+            // The user's copy handles audio only, so the system's video is gone with it.
+            vec![("video", None), ("audio", Some("tool"))],
+        ),
+        (
+            "a protocol beyond the host's is set aside with its reason",
+            vec![
+                candidate("tool", 2, Origin::System, "\"video\""),
+                candidate("tool", 1, Origin::User, "\"video\""),
+            ],
+            (Origin::User, 1),
+            vec![(
+                Origin::System,
+                ManifestError::ProtocolUnsupported {
+                    protocol: 2,
+                    supported: SUPPORTED,
+                },
+            )],
+            vec![],
+        ),
+        (
+            "a plugin whose program is unusable never shadows a working one",
+            vec![broken, candidate("tool", 1, Origin::System, "\"video\"")],
+            (Origin::System, 1),
+            vec![(
+                Origin::User,
+                ManifestError::FileMissing {
+                    path: "/bin/tool".into(),
+                },
+            )],
+            vec![],
+        ),
+    ];
+    for (name, candidates, installed, unusable, served) in cases {
+        let plugins = Plugins::resolve(candidates, SUPPORTED);
+        let got: Vec<_> = plugins
+            .installed()
+            .iter()
+            .map(|plugin| (plugin.origin, plugin.manifest.protocol))
+            .collect();
+        assert_eq!(got, [installed], "{name}: installed");
+        let got: Vec<_> = plugins
+            .unusable()
+            .iter()
+            .map(|plugin| (plugin.origin, plugin.reason.clone()))
+            .collect();
+        assert_eq!(got, unusable, "{name}: set aside");
+        for (kind, id) in served {
+            assert_eq!(
+                serving_id(&plugins, kind, "-").as_deref(),
+                id,
+                "{name}: served for {kind}"
+            );
         }
-    );
+    }
 }
 
 #[test]
@@ -73,19 +128,6 @@ fn rank_prefers_a_higher_protocol_then_the_user() {
     let mut all = vec![low_user.clone(), high_system.clone(), high_user.clone()];
     all.sort_by_key(rank);
     assert_eq!(all, [high_user, high_system, low_user]);
-}
-
-#[test]
-fn a_plugin_whose_program_is_unusable_never_shadows_a_working_one() {
-    let mut broken = candidate("tool", 1, Origin::User, "\"video\"");
-    broken.readiness = Readiness::Unready(ManifestError::FileMissing {
-        path: "/bin/tool".into(),
-    });
-    let working = candidate("tool", 1, Origin::System, "\"video\"");
-    let plugins = Plugins::resolve(vec![broken, working], SUPPORTED);
-    assert_eq!(plugins.installed()[0].origin, Origin::System);
-    assert_eq!(plugins.unusable().len(), 1);
-    assert_eq!(plugins.unusable()[0].origin, Origin::User);
 }
 
 #[test]
@@ -131,7 +173,7 @@ fn a_capability_the_plugin_does_not_provide_is_not_served() {
 
 #[test]
 fn a_plugin_set_aside_for_want_of_a_tool_says_which_tool() {
-    let unready = |id: &str, reason: ManifestError<Cap, crate::fixture::ToolFault>| {
+    let unready = |id: &str, reason: Reason| {
         let mut one = candidate(id, 1, Origin::System, "\"video\"");
         one.readiness = Readiness::Unready(reason);
         Plugins::resolve(vec![one], SUPPORTED)
