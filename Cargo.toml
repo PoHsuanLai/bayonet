@@ -1,6 +1,6 @@
 [package]
 name = "bayonet"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.92"
 license = "MIT OR Apache-2.0"
@@ -16,6 +16,8 @@ categories = ["development-tools", "os"]
 # brings serde, serde_json and thiserror and nothing else.
 default = ["host"]
 host = ["dep:toml", "dep:rustix"]
+# A fake plugin for a host's tests: `bayonet::testing`. Needs only the wire.
+testing = []
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -32,6 +34,10 @@ rustix = { version = "1.1", default-features = false, features = ["std", "event"
 name = "demo_plugin"
 required-features = ["host"]
 
+[[example]]
+name = "fake_plugin"
+required-features = ["host", "testing"]
+
 [[test]]
 name = "capabilities"
 required-features = ["host"]
@@ -39,6 +45,10 @@ required-features = ["host"]
 [[test]]
 name = "run"
 required-features = ["host"]
+
+[[test]]
+name = "testing"
+required-features = ["host", "testing"]
 
 [dev-dependencies]
 tempfile = "3"

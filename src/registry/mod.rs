@@ -37,6 +37,37 @@ impl<P: Provides> Registry<P> {
 
     /// The registry for `candidates`, applying the precedence above. `supported` is the newest
     /// protocol version the host speaks.
+    ///
+    /// ```
+    /// use bayonet::manifest::{Entry, Provides, Refusal};
+    /// use bayonet::registry::{Fit, Registry};
+    /// use bayonet::{Search, discover};
+    ///
+    /// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize)]
+    /// enum Cap {
+    ///     Thumbnail,
+    /// }
+    ///
+    /// #[derive(Debug, Clone, PartialEq, Eq)]
+    /// struct Tool(Cap);
+    /// impl Provides for Tool {
+    ///     type Capability = Cap;
+    ///     type Fault = std::convert::Infallible;
+    ///     fn parse(_entry: Entry) -> Result<Tool, Refusal<Self::Fault>> {
+    ///         Ok(Tool(Cap::Thumbnail))
+    ///     }
+    ///     fn capability(&self) -> Cap {
+    ///         self.0
+    ///     }
+    /// }
+    ///
+    /// // Discovery builds the registry from `<data dir>/myapp/plugins`; a host that gathers
+    /// // candidates itself calls `Registry::resolve`.
+    /// let user = std::path::Path::new("/nonexistent/data");
+    /// let found = discover::<Tool>(&Search::new("myapp", user, &[], 1));
+    /// let registry: Registry<Tool> = found.registry;
+    /// assert!(registry.serving(Cap::Thumbnail, |_| Fit::Exact).is_none());
+    /// ```
     pub fn resolve(candidates: Vec<Candidate<P>>, supported: u32) -> Registry<P> {
         let mut usable = Vec::new();
         let mut unusable = Vec::new();

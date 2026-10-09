@@ -3,7 +3,32 @@
 All notable changes to bayonet. The format follows Keep a Changelog; versions follow semantic
 versioning.
 
-## Unreleased
+## 0.2.0
+
+### Added
+
+- The `testing` feature (off by default) and `bayonet::testing`: `Fake`, a fake plugin generic over
+  the host's messages. It greets, hands each request to the host's closure through a
+  `Conversation`, and can misbehave on the wire in the ways of `Fault` (`Mute`, `OtherVersion`,
+  `ProvidesNothing`, `CrashOnRequest`, `HangOnRequest`, `Garbage`, `StderrFlood`, `IgnoreCancel`),
+  named on the command line as `--fault <name>` (`fault_argument`, `Fault::from_name`). A host's own
+  faults are written in its closure, which ends the plugin with a `Step`. `Fake::serve` works on any
+  reader and writer, so the plugin's half can be driven in memory; `Fake::run` serves on the
+  standard streams. `examples/fake_plugin.rs` and `tests/testing.rs` run a `Runner` against one.
+- Doctests on `Runner::open`, `Registry::resolve`, `suggest` and `Runner::with_log`.
+
+### Changed (breaking)
+
+- `Runner::with_log` takes `impl Fn(&str) + Send + Sync + 'static` instead of `fn(&str)`, so the sink
+  can capture state. A closure that captures nothing, or a function, is passed as before. `Runner`
+  is no longer `Copy` (it holds the sink in an `Arc`): clone it where it was copied.
+- `#[non_exhaustive]` on `RunError`, `WireError`, `ManifestError`, `Refusal`, `Readiness`, `Fit`,
+  `Origin` and `Rejected`. A `match` on one of the enums needs a wildcard arm; constructing a variant
+  is unchanged. `Rejected` can no longer be built by literal: use `Rejected::new(file, error)`. Reading
+  its public fields is unchanged.
+- `Suggestion` and `Greeting` stay plain structs: hosts write them as rows of constant tables.
+
+## 0.1.0
 
 ### Added
 

@@ -54,6 +54,10 @@ them against a real plugin program.
 
 - `host` (default): everything but the wire. Without it the crate is `serde`, `serde_json` and
   `thiserror`, which is what a plugin program needs.
+- `testing` (off by default): `bayonet::testing::Fake`, a fake plugin for a host's tests. It greets,
+  hands each request to a closure of the host's, and misbehaves on the wire on request
+  (`--fault mute`, `garbage`, `ignore-cancel`, and the rest of `Fault`). `examples/fake_plugin.rs` is
+  one in a few lines, and `tests/testing.rs` runs a `Runner` against it.
 - The wire, manifests, discovery and registry build on any platform. `run` needs Unix (process
   groups, `poll`) and is absent elsewhere. There is no bus, no UI toolkit and no async runtime in
   the tree; `cargo deny` bans them.

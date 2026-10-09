@@ -39,8 +39,15 @@ jobs:
       - name: Test
         run: cargo test --locked
 
+      # The `testing` feature is off by default: its tests and the fake plugin they start.
+      - name: Test with the testing feature
+        run: cargo test --all-features --locked
+
+      - name: Test the wire alone
+        run: cargo test --no-default-features --locked
+
       - name: Docs
-        run: cargo doc --no-deps --locked
+        run: cargo doc --no-deps --all-features --locked
         env:
           RUSTDOCFLAGS: -D warnings
 
@@ -62,4 +69,4 @@ jobs:
         run: rustup target add ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
       - name: Check
-        run: cargo check --lib --locked --target ${{ matrix.target }}
+        run: cargo check --lib --features testing --locked --target ${{ matrix.target }}

@@ -46,11 +46,19 @@ pub struct Discovery<P: Provides> {
 
 /// A manifest file that is not a plugin.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Rejected<P: Provides> {
     /// The file.
     pub file: PathBuf,
     /// Why not.
     pub error: ManifestError<P::Capability, P::Fault>,
+}
+
+impl<P: Provides> Rejected<P> {
+    /// The manifest `file`, which is not a plugin because of `error`.
+    pub fn new(file: PathBuf, error: ManifestError<P::Capability, P::Fault>) -> Rejected<P> {
+        Rejected { file, error }
+    }
 }
 
 /// The folder under a data directory that holds the manifests.
@@ -71,7 +79,7 @@ pub fn discover<P: Provides>(search: &Search<'_>) -> Discovery<P> {
         for file in manifest_files(&dir.join(search.app).join(FOLDER)) {
             match read_candidate(&file, origin) {
                 Ok(candidate) => candidates.push(candidate),
-                Err(error) => rejected.push(Rejected { file, error }),
+                Err(error) => rejected.push(Rejected::new(file, error)),
             }
         }
     }

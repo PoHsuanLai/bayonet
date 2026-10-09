@@ -38,7 +38,9 @@ broke it. If a rule blocks you, say so in the change; never deviate quietly.
 - **Private by default.** Items are `pub(crate)` unless a caller outside uses them today.
 - **One path per public item,** re-exported once. No glob re-exports.
 - **Unique, specific names.** No bare generic names at the crate root.
-- **Test helpers are not API.** They live in `tests/support/`, `examples/` or `#[cfg(test)]`.
+- **Test helpers are not API.** They live in `tests/support/`, `examples/` or `#[cfg(test)]`. The one
+  exception is `bayonet::testing`, behind the `testing` feature: a fake plugin generic over the
+  host's messages, so no host writes its own.
 - **An API change updates every caller in the same change.** No deprecated alias.
 - **Config structs are `#[non_exhaustive]`,** with `Default` where a default is meaningful, a
   constructor for the required parts (`Search::new`) and `with_` methods for the rest

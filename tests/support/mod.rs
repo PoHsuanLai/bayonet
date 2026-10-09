@@ -11,7 +11,7 @@ use bayonet::registry::Installed;
 use bayonet::run::{Runner, Timeouts};
 use bayonet::{Discovery, Search, discover};
 use shapes::Provision;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 /// Every capability of the demo host, as a manifest lists them.
@@ -35,11 +35,16 @@ tables = ["issues"]
 
 /// The demo plugin, built beside the tests as an example.
 pub fn demo_program() -> PathBuf {
+    example_program("demo_plugin")
+}
+
+/// The example called `name`, built beside the tests.
+pub fn example_program(name: &str) -> PathBuf {
     let exe = std::env::current_exe().expect("the test's own path");
     let program = exe
         .parent()
         .and_then(|deps| deps.parent())
-        .map(|profile| profile.join("examples").join("demo_plugin"))
+        .map(|profile| profile.join("examples").join(name))
         .expect("a target directory");
     assert!(
         program.is_file(),
@@ -76,11 +81,16 @@ impl Host {
 
     /// Installs the demo plugin as `id`, started with `args`, providing `provides`.
     pub fn install(&self, id: &str, args: &[&str], provides: &str) {
+        self.install_program(id, &demo_program(), args, provides);
+    }
+
+    /// Installs `program` as `id`, started with `args`, providing `provides`.
+    pub fn install_program(&self, id: &str, program: &Path, args: &[&str], provides: &str) {
         let folder = self.root.path().join("user").join("demo").join("plugins");
         std::fs::create_dir_all(&folder).expect("the plugin folder");
         let text = format!(
             "id = \"{id}\"\nname = \"{id}\"\nprotocol = 1\n[program]\npath = {:?}\nargs = {:?}\n{provides}",
-            demo_program().display().to_string(),
+            program.display().to_string(),
             args
         );
         std::fs::write(folder.join(format!("{id}.toml")), text).expect("the manifest");

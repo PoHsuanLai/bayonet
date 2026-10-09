@@ -6,6 +6,7 @@ use std::time::Duration;
 /// Why a plugin could not answer. Every variant names the plugin by id; none of them takes the
 /// host down, and the process is gone by the time the host sees one.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum RunError<C: Debug> {
     /// The program could not be started.
     #[error("cannot start {program:?}: {kind}")]
