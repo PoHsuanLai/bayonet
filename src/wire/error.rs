@@ -2,6 +2,7 @@
 
 /// Why bytes are not a message.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum WireError {
     /// A frame announces more JSON than a message may carry.
     #[error("a message of {len} bytes exceeds the limit of {limit}")]

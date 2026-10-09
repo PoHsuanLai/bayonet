@@ -49,6 +49,25 @@ pub struct Suggestion<C, K, H> {
 
 /// The package of the first row of `table` for `capability` whose key `matches`, or `None` when
 /// no package is known.
+///
+/// ```
+/// use bayonet::{Package, Suggestion, suggest};
+///
+/// #[derive(Debug, Clone, Copy, PartialEq)]
+/// enum Capability {
+///     Play,
+/// }
+///
+/// const TABLE: &[Suggestion<Capability, &str, ()>] = &[Suggestion {
+///     capability: Capability::Play,
+///     key: "video",
+///     package: Package::new("mpv", (), Some("mpv")),
+/// }];
+///
+/// let package = suggest(TABLE, Capability::Play, |kind| *kind == "video");
+/// assert_eq!(package.map(Package::name), Some("mpv"));
+/// assert!(suggest(TABLE, Capability::Play, |kind| *kind == "audio").is_none());
+/// ```
 pub fn suggest<C: PartialEq, K, H: Copy>(
     table: &[Suggestion<C, K, H>],
     capability: C,

@@ -6,6 +6,7 @@ use std::path::PathBuf;
 /// Why a manifest, or the program it names, cannot be used. `C` is the host's capability type
 /// and `E` the host's own reason for refusing a `[[provides]]` entry.
 #[derive(Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum ManifestError<C: fmt::Debug, E: std::error::Error> {
     /// The file cannot be read.
     #[error("cannot read the manifest: {kind}")]

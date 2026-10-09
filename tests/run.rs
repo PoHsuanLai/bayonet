@@ -7,7 +7,7 @@
 
 mod support;
 
-use bayonet::run::{RunError, Timeouts};
+use bayonet::run::{RunError, Runner, Timeouts};
 use std::ops::ControlFlow;
 use std::path::Path;
 use std::process::Command;
@@ -250,4 +250,25 @@ fn running(pid: &str) -> bool {
     let stat = String::from_utf8_lossy(&out.stdout);
     let stat = stat.trim();
     !stat.is_empty() && !stat.starts_with('Z')
+}
+
+#[test]
+fn a_log_sink_that_captures_state_receives_the_plugins_stderr_lines() {
+    use std::sync::{Arc, Mutex};
+    let host = Host::new();
+    host.install("demo", &["--mode", "crash"], PROVIDES);
+    let plugin = host.plugin("demo");
+    let lines = Arc::new(Mutex::new(Vec::new()));
+    let kept = Arc::clone(&lines);
+    let runner = Runner::new("myapp", quick()).with_log(move |line| {
+        kept.lock().unwrap().push(line.to_owned());
+    });
+    let error = runner
+        .open::<Wire, _>(&plugin, Cap::RowFacts, &facts(), 0)
+        .unwrap_err();
+    assert!(matches!(error, RunError::Crashed { .. }), "{error:?}");
+    assert_eq!(
+        *lines.lock().unwrap(),
+        vec!["myapp: plugin demo: out of memory".to_owned()]
+    );
 }

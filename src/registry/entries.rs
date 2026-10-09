@@ -4,6 +4,7 @@ use crate::manifest::{Manifest, ManifestError, PluginId, Provides};
 
 /// Which directory a manifest was found in. The person's own beats the system's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum Origin {
     /// `$XDG_DATA_DIRS`: installed by the distribution.
     System,
@@ -13,6 +14,7 @@ pub enum Origin {
 
 /// Whether the files a manifest names can be used.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Readiness<P: Provides> {
     /// Every program is there and runs.
     Ready,
@@ -53,6 +55,7 @@ pub struct Unusable<P: Provides> {
 
 /// How well a plugin's entry fits a request: the host decides, bayonet only orders.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[non_exhaustive]
 pub enum Fit {
     /// The entry does not serve the request.
     Miss,

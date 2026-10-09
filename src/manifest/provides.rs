@@ -33,6 +33,7 @@ impl Entry {
 
 /// Why a host will not take a `[[provides]]` entry.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Refusal<E> {
     /// The entry is not of the host's shape (a capability or a key that does not exist).
     Syntax {

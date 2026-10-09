@@ -9,10 +9,12 @@ use crate::manifest::Program;
 use crate::wire::{Frame, FrameDecoder, MAX_PAYLOAD_BYTES, WireError, encode_frame};
 use rustix::event::{PollFd, PollFlags, poll};
 use rustix::time::Timespec;
+use std::fmt;
 use std::io::{Read, Write};
 use std::marker::PhantomData;
 use std::os::unix::process::CommandExt;
 use std::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, Stdio};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// How many of a plugin's last stderr lines an error carries.
@@ -35,10 +37,18 @@ pub(super) enum Arrival<M> {
 }
 
 /// Where a plugin's stderr lines go, each prefixed with the host's name and the plugin's id.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone)]
 pub(super) struct Log {
     pub(super) app: &'static str,
-    pub(super) sink: fn(&str),
+    pub(super) sink: Arc<dyn Fn(&str) + Send + Sync>,
+}
+
+impl fmt::Debug for Log {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Log")
+            .field("app", &self.app)
+            .finish_non_exhaustive()
+    }
 }
 
 /// A running plugin. Dropping it kills the process and reaps it.

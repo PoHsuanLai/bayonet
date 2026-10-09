@@ -19,6 +19,8 @@
 //! - [`suggest`]: the package to name when none does.
 //! - [`run`] (Unix): spawning, greeting, timeouts, cancellation, crash containment.
 //!
+//! - [`testing`] (feature `testing`): a fake plugin a host's tests build in a few lines.
+//!
 //! The `host` feature (on by default) builds everything but the wire.
 
 mod capability;
@@ -34,6 +36,8 @@ pub mod registry;
 pub mod run;
 #[cfg(feature = "host")]
 mod suggest;
+#[cfg(feature = "testing")]
+pub mod testing;
 pub mod wire;
 
 pub use capability::Capability;
