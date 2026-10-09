@@ -1,26 +1,13 @@
 //! Crash containment: a plugin that hangs, dies, lies or ignores a cancel costs one request and
 //! leaves nothing running.
 
-#![allow(clippy::unwrap_used)]
-// A test handler names the messages it expects and refuses the rest alike.
-#![allow(clippy::wildcard_enum_match_arm)]
-
-mod support;
-
+use crate::support::shapes::{Cap, Message, Request, Wire};
+use crate::support::{Host, PROVIDES, facts, quick, runner};
 use bayonet::run::{RunError, Runner, Timeouts};
 use std::ops::ControlFlow;
 use std::path::Path;
 use std::process::Command;
 use std::time::{Duration, Instant};
-use support::shapes::{Cap, Message, Request, Wire};
-use support::{Host, PROVIDES, quick, runner};
-
-fn facts() -> Request {
-    Request::Facts {
-        table: "issues".to_owned(),
-        key: "1".to_owned(),
-    }
-}
 
 /// The error of asking `row.facts` of the demo plugin started in `mode`, with `timeouts`.
 fn failure(mode: &str, timeouts: Timeouts, payload_limit: u64) -> RunError<Cap> {
@@ -172,7 +159,6 @@ fn a_stream_that_reports_progress_may_outlast_the_silence_timeout() {
         .open::<Wire, _>(&plugin, Cap::AgentAdapter, &task, 0)
         .unwrap();
     let started = Instant::now();
-    let mut events = 0;
     session
         .stream(
             |_| false,
@@ -180,7 +166,6 @@ fn a_stream_that_reports_progress_may_outlast_the_silence_timeout() {
             |_, frame| -> Result<ControlFlow<()>, RunError<Cap>> {
                 match frame.message {
                     Message::Event { .. } => {
-                        events += 1;
                         // The silence wait starts again with every message; stop after it has
                         // been outlasted twice over.
                         let done = started.elapsed() > timeouts.silence * 2;
@@ -195,7 +180,10 @@ fn a_stream_that_reports_progress_may_outlast_the_silence_timeout() {
             },
         )
         .unwrap();
-    assert!(events > 5, "{events} events");
+    assert!(
+        started.elapsed() > timeouts.silence * 2,
+        "the stream outlasted the silence timeout twice over"
+    );
 }
 
 #[test]

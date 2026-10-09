@@ -1,25 +1,12 @@
 //! A host's runner against a fake plugin built with `bayonet::testing`: each wire-level fault is
 //! the error the runner names, and a host's own fault is expressed in its handler.
 
-#![allow(clippy::unwrap_used)]
-// A test handler names the messages it expects and refuses the rest alike.
-#![allow(clippy::wildcard_enum_match_arm)]
-
-mod support;
-
+use crate::support::shapes::{Cap, Message, Request, Wire};
+use crate::support::{Host, PROVIDES, example_program, facts, quick, runner};
 use bayonet::run::{RunError, Timeouts};
 use bayonet::testing::Fault;
 use std::ops::ControlFlow;
 use std::time::Duration;
-use support::shapes::{Cap, Message, Request, Wire};
-use support::{Host, PROVIDES, example_program, quick, runner};
-
-fn facts() -> Request {
-    Request::Facts {
-        table: "issues".to_owned(),
-        key: "1".to_owned(),
-    }
-}
 
 fn host_with(fault: &str) -> Host {
     let host = Host::new();
@@ -48,14 +35,25 @@ fn failure(fault: &str, timeouts: Timeouts, payload_limit: u64) -> RunError<Cap>
 }
 
 #[test]
-fn a_fake_without_a_fault_answers_the_request() {
-    let host = host_with("");
-    let plugin = host.plugin("fake");
-    let mut session = runner(quick())
-        .open::<Wire, _>(&plugin, Cap::RowFacts, &facts(), 0)
-        .unwrap();
-    let reply = session.reply().unwrap();
-    assert!(matches!(reply.message, Message::Facts(rows) if rows.len() == 1));
+fn a_fake_that_does_not_fail_answers_the_request() {
+    // name, the fault ("" for none)
+    let cases = [
+        ("without a fault", ""),
+        // Only the runner draining stderr lets the fake get to its answer.
+        ("that floods stderr", Fault::StderrFlood.name()),
+    ];
+    for (name, fault) in cases {
+        let host = host_with(fault);
+        let plugin = host.plugin("fake");
+        let mut session = runner(quick())
+            .open::<Wire, _>(&plugin, Cap::RowFacts, &facts(), 0)
+            .unwrap();
+        let reply = session.reply().unwrap();
+        assert!(
+            matches!(&reply.message, Message::Facts(rows) if rows.len() == 1),
+            "a fake {name}: {reply:?}"
+        );
+    }
 }
 
 #[test]
@@ -97,19 +95,6 @@ fn each_wire_fault_of_the_fake_is_the_error_the_runner_names() {
         let error = failure(fault.name(), timeouts, 0);
         assert!(check(&error), "{}: {error:?}", fault.name());
     }
-}
-
-#[test]
-fn a_fake_that_floods_stderr_still_answers() {
-    let host = host_with(Fault::StderrFlood.name());
-    let plugin = host.plugin("fake");
-    let mut session = runner(quick())
-        .open::<Wire, _>(&plugin, Cap::RowFacts, &facts(), 0)
-        .unwrap();
-    assert!(matches!(
-        session.reply().unwrap().message,
-        Message::Facts(_)
-    ));
 }
 
 fn adapt_slow(fault: &str) -> Result<(), RunError<Cap>> {

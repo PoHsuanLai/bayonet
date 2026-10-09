@@ -38,17 +38,11 @@ required-features = ["host"]
 name = "fake_plugin"
 required-features = ["host", "testing"]
 
+# One integration-test binary, so the tests link once. Its `testing` module is behind the feature.
 [[test]]
-name = "capabilities"
+name = "bayonet"
+path = "tests/bayonet/main.rs"
 required-features = ["host"]
-
-[[test]]
-name = "run"
-required-features = ["host"]
-
-[[test]]
-name = "testing"
-required-features = ["host", "testing"]
 
 [dev-dependencies]
 tempfile = "3"

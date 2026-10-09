@@ -4,13 +4,13 @@
 // `shapes` is also read by the demo plugin, and each test file uses some of it.
 #![allow(dead_code)]
 
-#[path = "../../examples/shapes/mod.rs"]
+#[path = "../../../examples/shapes/mod.rs"]
 pub mod shapes;
 
 use bayonet::registry::Installed;
 use bayonet::run::{Runner, Timeouts};
 use bayonet::{Discovery, Search, discover};
-use shapes::Provision;
+use shapes::{Provision, Request};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -52,6 +52,14 @@ pub fn example_program(name: &str) -> PathBuf {
         program.display()
     );
     program
+}
+
+/// The request for the facts of `issues` row `1`.
+pub fn facts() -> Request {
+    Request::Facts {
+        table: "issues".to_owned(),
+        key: "1".to_owned(),
+    }
 }
 
 /// Timeouts short enough for a test of a hang, long enough for a loaded machine to start a

@@ -2,22 +2,16 @@
 //! `row.facts`) on bayonet's generic API, against a real plugin program: discovery finds them,
 //! the registry routes them, the runner asks them.
 
-#![allow(clippy::unwrap_used)]
-// A test handler names the messages it expects and refuses the rest alike.
-#![allow(clippy::wildcard_enum_match_arm)]
-
-mod support;
-
+use crate::support::shapes::{
+    Action, Activation, Batch, Block, Cap, Choice, Fact, Icon, Item, Message, OpenTarget,
+    Provision, Request, Wire,
+};
+use crate::support::{Host, PROVIDES, quick, runner};
 use bayonet::registry::Fit;
 use bayonet::run::RunError;
 use serde_json::{Value, json};
 use std::cell::Cell;
 use std::ops::ControlFlow;
-use support::shapes::{
-    Action, Activation, Batch, Block, Cap, Choice, Fact, Icon, Item, Message, OpenTarget,
-    Provision, Request, Wire,
-};
-use support::{Host, PROVIDES, quick, runner};
 
 fn installed() -> (Host, bayonet::registry::Installed<Provision>) {
     let host = Host::new();
