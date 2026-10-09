@@ -1,26 +1,13 @@
 //! Crash containment: a plugin that hangs, dies, lies or ignores a cancel costs one request and
 //! leaves nothing running.
 
-#![allow(clippy::unwrap_used)]
-// A test handler names the messages it expects and refuses the rest alike.
-#![allow(clippy::wildcard_enum_match_arm)]
-
-mod support;
-
+use crate::support::shapes::{Cap, Message, Request, Wire};
+use crate::support::{Host, PROVIDES, facts, quick, runner};
 use bayonet::run::{RunError, Runner, Timeouts};
 use std::ops::ControlFlow;
 use std::path::Path;
 use std::process::Command;
 use std::time::{Duration, Instant};
-use support::shapes::{Cap, Message, Request, Wire};
-use support::{Host, PROVIDES, quick, runner};
-
-fn facts() -> Request {
-    Request::Facts {
-        table: "issues".to_owned(),
-        key: "1".to_owned(),
-    }
-}
 
 /// The error of asking `row.facts` of the demo plugin started in `mode`, with `timeouts`.
 fn failure(mode: &str, timeouts: Timeouts, payload_limit: u64) -> RunError<Cap> {

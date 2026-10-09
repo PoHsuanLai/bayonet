@@ -47,7 +47,7 @@ first, with its greeting. `examples/demo_plugin.rs` is the shortest complete one
 
 `docs/capabilities.md` shows how four capabilities of a document host (`block.lens`, `open.provider`,
 `agent.adapter`, `row.facts`) sit on this API, and how `open.provider` has the wire shape of a
-launcher's provider, so one plugin can feed a launcher and a document host. `tests/capabilities.rs` runs
+launcher's provider, so one plugin can feed a launcher and a document host. `tests/bayonet/capabilities.rs` runs
 them against a real plugin program.
 
 ## Features and portability
@@ -57,7 +57,7 @@ them against a real plugin program.
 - `testing` (off by default): `bayonet::testing::Fake`, a fake plugin for a host's tests. It greets,
   hands each request to a closure of the host's, and misbehaves on the wire on request
   (`--fault mute`, `garbage`, `ignore-cancel`, and the rest of `Fault`). `examples/fake_plugin.rs` is
-  one in a few lines, and `tests/testing.rs` runs a `Runner` against it.
+  one in a few lines, and `tests/bayonet/testing.rs` runs a `Runner` against it.
 - The wire, manifests, discovery and registry build on any platform. `run` needs Unix (process
   groups, `poll`) and is absent elsewhere. There is no bus, no UI toolkit and no async runtime in
   the tree; `cargo deny` bans them.

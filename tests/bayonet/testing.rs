@@ -1,25 +1,12 @@
 //! A host's runner against a fake plugin built with `bayonet::testing`: each wire-level fault is
 //! the error the runner names, and a host's own fault is expressed in its handler.
 
-#![allow(clippy::unwrap_used)]
-// A test handler names the messages it expects and refuses the rest alike.
-#![allow(clippy::wildcard_enum_match_arm)]
-
-mod support;
-
+use crate::support::shapes::{Cap, Message, Request, Wire};
+use crate::support::{Host, PROVIDES, example_program, facts, quick, runner};
 use bayonet::run::{RunError, Timeouts};
 use bayonet::testing::Fault;
 use std::ops::ControlFlow;
 use std::time::Duration;
-use support::shapes::{Cap, Message, Request, Wire};
-use support::{Host, PROVIDES, example_program, quick, runner};
-
-fn facts() -> Request {
-    Request::Facts {
-        table: "issues".to_owned(),
-        key: "1".to_owned(),
-    }
-}
 
 fn host_with(fault: &str) -> Host {
     let host = Host::new();
