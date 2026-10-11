@@ -1,0 +1,7 @@
+# The tests run plugins built as examples (`tests/bayonet/support`: `target/<profile>/examples/<name>`).
+# `cargo test` builds them; an archived run (`cargo nextest archive`, as the desktop's jailed gate does) does
+# not, so the gate builds them first and the archive carries them beside the test binaries.
+[profile.default.archive]
+include = [
+    { path = "debug/examples", relative-to = "target", depth = 1, on-missing = "error" },
+]
