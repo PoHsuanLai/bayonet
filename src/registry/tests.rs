@@ -165,7 +165,7 @@ fn a_capability_the_plugin_does_not_provide_is_not_served() {
     assert!(plugins.serving(Cap::Probe, fit("video", "-")).is_some());
     assert!(plugins.serving(Cap::Export, fit("video", "-")).is_none());
     assert!(
-        Plugins::empty()
+        Plugins::default()
             .serving(Cap::Probe, fit("video", "-"))
             .is_none()
     );
@@ -207,7 +207,7 @@ fn a_plugin_set_aside_for_want_of_a_tool_says_which_tool() {
             "mpv",
             false,
         ),
-        ("no such plugin", Plugins::empty(), "play", "mpv", false),
+        ("no such plugin", Plugins::default(), "play", "mpv", false),
         (
             "another plugin's tool",
             unready("play", missing("/usr/bin/mpv")),

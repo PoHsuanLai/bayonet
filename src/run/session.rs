@@ -4,7 +4,7 @@ use super::error::RunError;
 use super::process::{Arrival, Process};
 use super::protocol::Protocol;
 use super::timeouts::Timeouts;
-use crate::wire::{Frame, WireError};
+use crate::wire::Frame;
 use std::fmt;
 use std::ops::ControlFlow;
 use std::time::Instant;
@@ -47,11 +47,6 @@ impl<W: Protocol> Session<W> {
     /// does not match its header.
     pub fn broke(&self, reason: impl Into<String>) -> RunError<W::Capability> {
         RunError::broke(self.id(), reason)
-    }
-
-    /// A wire error as the plugin breaking the protocol.
-    pub fn wire_error(&self, error: &WireError) -> RunError<W::Capability> {
-        self.process.wire_error(error)
     }
 
     /// The one message that answers a request that has no stream. Waits at most the silence

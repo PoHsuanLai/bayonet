@@ -30,11 +30,6 @@ impl<P: Provides> Default for Registry<P> {
 }
 
 impl<P: Provides> Registry<P> {
-    /// No plugins.
-    pub fn empty() -> Registry<P> {
-        Registry::default()
-    }
-
     /// The registry for `candidates`, applying the precedence above. `supported` is the newest
     /// protocol version the host speaks.
     ///
