@@ -4,7 +4,7 @@
 use super::error::ManifestError;
 use super::id::PluginId;
 use super::model::{Manifest, Program};
-use super::provides::{Entry, Provides, absolute};
+use super::provides::{Entry, Provides, Refusal, absolute};
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -64,7 +64,7 @@ impl<P: Provides> Manifest<P> {
 
 fn program<P: Provides>(raw: RawProgram) -> Result<Program, Failure<P>> {
     Ok(Program {
-        path: absolute(raw.path).map_err(|refusal| refusal.into_error())?,
+        path: absolute(raw.path).map_err(Refusal::into_error)?,
         args: raw.args,
     })
 }
@@ -75,7 +75,7 @@ fn provisions<P: Provides>(raw: Vec<toml::Table>) -> Result<Vec<P>, Failure<P>> 
     }
     let mut provides: Vec<P> = Vec::with_capacity(raw.len());
     for table in raw {
-        let provision = P::parse(Entry(table)).map_err(|refusal| refusal.into_error())?;
+        let provision = P::parse(Entry(table)).map_err(Refusal::into_error)?;
         let capability = provision.capability();
         if provides.iter().any(|seen| seen.capability() == capability) {
             return Err(ManifestError::CapabilityRepeated { capability });

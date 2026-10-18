@@ -38,7 +38,7 @@ impl FrameDecoder {
         let Some(header) = self.buffer.first_chunk::<HEADER>() else {
             return Ok(None);
         };
-        let (json_len, payload_len) = lengths(header)?;
+        let (json_len, payload_len) = lengths(*header)?;
         if payload_len as u64 > max_payload {
             return Err(WireError::PayloadTooLarge {
                 len: payload_len as u64,

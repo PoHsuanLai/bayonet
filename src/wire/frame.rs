@@ -48,7 +48,7 @@ fn checked_json(len: u64) -> Result<u32, WireError> {
     u32::try_from(len)
         .ok()
         .filter(|len| *len <= MAX_JSON_BYTES)
-        .ok_or(WireError::JsonTooLarge {
+        .ok_or_else(|| WireError::JsonTooLarge {
             len,
             limit: u64::from(MAX_JSON_BYTES),
         })
@@ -58,7 +58,7 @@ fn checked_payload(len: u64) -> Result<u32, WireError> {
     u32::try_from(len)
         .ok()
         .filter(|len| *len <= MAX_PAYLOAD_BYTES)
-        .ok_or(WireError::PayloadTooLarge {
+        .ok_or_else(|| WireError::PayloadTooLarge {
             len,
             limit: u64::from(MAX_PAYLOAD_BYTES),
         })
@@ -81,7 +81,7 @@ pub fn write_frame<W: Write, T: Serialize>(
 pub fn read_frame<R: Read, T: DeserializeOwned>(input: &mut R) -> Result<Frame<T>, WireError> {
     let mut header = [0u8; HEADER];
     read_exact(input, &mut header, WireError::Closed)?;
-    let (json_len, payload_len) = lengths(&header)?;
+    let (json_len, payload_len) = lengths(header)?;
     let mut json = vec![0u8; json_len];
     read_exact(input, &mut json, WireError::Truncated)?;
     let mut payload = vec![0u8; payload_len];
@@ -111,7 +111,7 @@ fn read_exact<R: Read>(
 }
 
 /// The two lengths a header announces, inside the limits.
-pub(super) fn lengths(header: &[u8; HEADER]) -> Result<(usize, usize), WireError> {
+pub(super) fn lengths(header: [u8; HEADER]) -> Result<(usize, usize), WireError> {
     let word = |at: usize| {
         u32::from_le_bytes([header[at], header[at + 1], header[at + 2], header[at + 3]])
     };
