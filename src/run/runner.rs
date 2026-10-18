@@ -4,9 +4,9 @@ use super::error::RunError;
 use super::process::{Arrival, Log, Process};
 use super::protocol::Protocol;
 use super::session::Session;
-use super::timeouts::Timeouts;
 use crate::manifest::Provides;
 use crate::registry::Installed;
+use crate::timeouts::Timeouts;
 use crate::wire::Frame;
 use std::sync::Arc;
 

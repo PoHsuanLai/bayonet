@@ -3,7 +3,7 @@
 use super::error::RunError;
 use super::process::{Arrival, Process};
 use super::protocol::Protocol;
-use super::timeouts::Timeouts;
+use crate::timeouts::Timeouts;
 use crate::wire::Frame;
 use std::fmt;
 use std::ops::ControlFlow;

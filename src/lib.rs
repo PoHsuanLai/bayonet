@@ -38,6 +38,8 @@ pub mod run;
 mod suggest;
 #[cfg(feature = "testing")]
 pub mod testing;
+#[cfg(feature = "host")]
+mod timeouts;
 pub mod wire;
 
 pub use capability::Capability;
@@ -45,3 +47,5 @@ pub use capability::Capability;
 pub use discover::{Discovery, Rejected, Search, discover};
 #[cfg(feature = "host")]
 pub use suggest::{Package, Suggestion, suggest};
+#[cfg(feature = "host")]
+pub use timeouts::Timeouts;

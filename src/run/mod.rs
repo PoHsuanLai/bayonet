@@ -11,10 +11,9 @@ mod process;
 mod protocol;
 mod runner;
 mod session;
-mod timeouts;
 
+pub use crate::timeouts::Timeouts;
 pub use error::RunError;
 pub use protocol::{Greeting, Protocol};
 pub use runner::Runner;
 pub use session::Session;
-pub use timeouts::Timeouts;
