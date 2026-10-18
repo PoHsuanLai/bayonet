@@ -3,7 +3,7 @@
 //! a timeout and no thread; the host needs none of its own.
 
 use super::error::RunError;
-use super::protocol::Protocol;
+use super::protocol::{Cap, Protocol};
 use crate::manifest::PluginId;
 use crate::manifest::Program;
 use crate::wire::{Frame, FrameDecoder, MAX_PAYLOAD_BYTES, WireError, encode_frame};
@@ -76,7 +76,7 @@ impl<W: Protocol> Process<W> {
         id: &PluginId,
         program: Option<&Program>,
         log: Log,
-    ) -> Result<Process<W>, RunError<W::Capability>> {
+    ) -> Result<Process<W>, RunError<Cap<W>>> {
         let id = id.as_str().to_owned();
         let program = program.ok_or_else(|| RunError::broke(&id, "the manifest has no program"))?;
         // A group of its own, so that killing the plugin kills what it started too.
@@ -131,7 +131,7 @@ impl<W: Protocol> Process<W> {
 
     /// Sends one request. Stderr is drained first, so a plugin that logged while the host was not
     /// receiving is not blocked on a full pipe.
-    pub(super) fn send(&mut self, message: &W::Request) -> Result<(), RunError<W::Capability>> {
+    pub(super) fn send(&mut self, message: &W::Request) -> Result<(), RunError<Cap<W>>> {
         self.drain_stderr();
         let bytes = encode_frame(message, &[]).map_err(|error| self.wire_error(&error))?;
         let written = match self.stdin.as_mut() {
@@ -145,7 +145,7 @@ impl<W: Protocol> Process<W> {
     pub(super) fn receive(
         &mut self,
         wait: Duration,
-    ) -> Result<Arrival<W::Message>, RunError<W::Capability>> {
+    ) -> Result<Arrival<W::Message>, RunError<Cap<W>>> {
         let end = Instant::now() + wait;
         loop {
             match self
@@ -180,7 +180,7 @@ impl<W: Protocol> Process<W> {
     }
 
     /// Waits for readable output for at most `left`, reading what is there.
-    fn pump(&mut self, left: Duration) -> Result<(), RunError<W::Capability>> {
+    fn pump(&mut self, left: Duration) -> Result<(), RunError<Cap<W>>> {
         let timeout = Timespec {
             tv_sec: i64::try_from(left.as_secs()).unwrap_or(i64::MAX),
             tv_nsec: i64::from(left.subsec_nanos()),
@@ -209,7 +209,7 @@ impl<W: Protocol> Process<W> {
         Ok(())
     }
 
-    fn read_stdout(&mut self) -> Result<(), RunError<W::Capability>> {
+    fn read_stdout(&mut self) -> Result<(), RunError<Cap<W>>> {
         match self.stdout.read(&mut self.scratch) {
             Ok(0) => {
                 if self.decoder.is_mid_frame() {
@@ -268,7 +268,7 @@ impl<W: Protocol> Process<W> {
     }
 
     /// The error for a plugin whose output ended: how it exited, and what it last said.
-    pub(super) fn crashed(&mut self) -> RunError<W::Capability> {
+    pub(super) fn crashed(&mut self) -> RunError<Cap<W>> {
         // Reading stderr to its end lets the last line it wrote before dying show up.
         while self.stderr.is_some() {
             self.read_stderr();
@@ -302,7 +302,7 @@ impl<W: Protocol> Process<W> {
     }
 
     /// A wire error as the plugin breaking the protocol.
-    pub(super) fn wire_error(&self, error: &WireError) -> RunError<W::Capability> {
+    pub(super) fn wire_error(&self, error: &WireError) -> RunError<Cap<W>> {
         RunError::broke(&self.id, error.to_string())
     }
 

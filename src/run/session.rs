@@ -2,7 +2,7 @@
 
 use super::error::RunError;
 use super::process::{Arrival, Process};
-use super::protocol::Protocol;
+use super::protocol::{Cap, Protocol};
 use crate::timeouts::Timeouts;
 use crate::wire::Frame;
 use std::fmt;
@@ -39,19 +39,19 @@ impl<W: Protocol> Session<W> {
     }
 
     /// Sends another request on the same plugin.
-    pub fn send(&mut self, request: &W::Request) -> Result<(), RunError<W::Capability>> {
+    pub fn send(&mut self, request: &W::Request) -> Result<(), RunError<Cap<W>>> {
         self.process.send(request)
     }
 
     /// The plugin broke the protocol for `reason`: an answer of the wrong shape, a picture that
     /// does not match its header.
-    pub fn broke(&self, reason: impl Into<String>) -> RunError<W::Capability> {
+    pub fn broke(&self, reason: impl Into<String>) -> RunError<Cap<W>> {
         RunError::broke(self.id(), reason)
     }
 
     /// The one message that answers a request that has no stream. Waits at most the silence
     /// timeout.
-    pub fn reply(&mut self) -> Result<Frame<W::Message>, RunError<W::Capability>> {
+    pub fn reply(&mut self) -> Result<Frame<W::Message>, RunError<Cap<W>>> {
         match self.process.receive(self.timeouts.silence)? {
             Arrival::Message(frame) => Ok(frame),
             Arrival::Quiet => Err(RunError::Silent {
@@ -75,7 +75,7 @@ impl<W: Protocol> Session<W> {
         mut on_message: impl FnMut(&str, Frame<W::Message>) -> Result<ControlFlow<T>, E>,
     ) -> Result<T, E>
     where
-        E: From<RunError<W::Capability>>,
+        E: From<RunError<Cap<W>>>,
     {
         let mut asked_to_cancel: Option<Instant> = None;
         let mut quiet_since = Instant::now();

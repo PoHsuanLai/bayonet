@@ -26,7 +26,7 @@ A host implements two small traits.
 impl bayonet::manifest::Provides for Provision { /* Capability, Fault, parse, capability */ }
 
 // The messages the host and its plugins exchange, and the greeting that starts them.
-impl bayonet::run::Protocol for Wire { /* Capability, Request, Message, VERSION, greeting */ }
+impl bayonet::run::Protocol for Wire { /* Provides, Request, Message, VERSION, greeting */ }
 ```
 
 Then:
@@ -35,7 +35,7 @@ Then:
 let found = bayonet::discover::<Provision>(&Search::new("myapp", user, system, Wire::VERSION));
 let plugin = found.registry.serving(Cap::Thumbnail, |p| fit(p, &file)).ok_or(missing)?;
 let mut session = Runner::new("myapp", Timeouts::default().with_silence(Duration::from_secs(10)))
-    .open::<Wire, _>(plugin, Cap::Thumbnail, &request, payload_limit)?;
+    .open::<Wire>(plugin, Cap::Thumbnail, &request, payload_limit)?;
 let reply = session.reply()?;           // one answer, or
 session.stream(cancelled, &Request::Cancel, |id, frame| /* ... */)?;  // a stream of them
 ```

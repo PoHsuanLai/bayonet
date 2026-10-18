@@ -270,7 +270,7 @@ pub enum Message {
 pub struct Wire;
 
 impl Protocol for Wire {
-    type Capability = Cap;
+    type Provides = Provision;
     type Request = Request;
     type Message = Message;
     const VERSION: u32 = 1;

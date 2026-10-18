@@ -66,7 +66,7 @@ fn block_lens_returns_a_drawing_as_the_frames_payload() {
         text: "abc".to_owned(),
     });
     let mut session = runner(quick())
-        .open::<Wire, _>(&plugin, Cap::BlockLens, &lens, 1 << 10)
+        .open::<Wire>(&plugin, Cap::BlockLens, &lens, 1 << 10)
         .unwrap();
     let frame = session.reply().unwrap();
     assert_eq!(
@@ -88,7 +88,7 @@ fn row_facts_is_one_request_and_one_reply() {
         key: "42".to_owned(),
     };
     let mut session = runner(quick())
-        .open::<Wire, _>(&plugin, Cap::RowFacts, &ask, 0)
+        .open::<Wire>(&plugin, Cap::RowFacts, &ask, 0)
         .unwrap();
     assert_eq!(
         session.reply().unwrap().message,
@@ -106,7 +106,7 @@ fn an_agent_adapter_streams_events_until_it_finishes() {
         task: "triage".to_owned(),
     };
     let mut session = runner(quick())
-        .open::<Wire, _>(&plugin, Cap::AgentAdapter, &task, 0)
+        .open::<Wire>(&plugin, Cap::AgentAdapter, &task, 0)
         .unwrap();
     let mut events = Vec::new();
     session
@@ -141,7 +141,7 @@ fn an_open_provider_feeds_a_launcher_sink_and_a_newer_keystroke_cancels_it() {
         generation: 7,
     };
     let mut session = runner(quick())
-        .open::<Wire, _>(&plugin, Cap::OpenProvider, &query, 0)
+        .open::<Wire>(&plugin, Cap::OpenProvider, &query, 0)
         .unwrap();
     let keystroke = Cell::new(false);
     let mut sink: Vec<Batch> = Vec::new();
@@ -177,7 +177,7 @@ fn an_open_provider_answers_a_whole_query_then_says_what_choosing_a_row_does() {
         generation: 1,
     };
     let mut session = run
-        .open::<Wire, _>(&plugin, Cap::OpenProvider, &query, 0)
+        .open::<Wire>(&plugin, Cap::OpenProvider, &query, 0)
         .unwrap();
     let mut rows: Vec<Item> = Vec::new();
     session
@@ -217,7 +217,7 @@ fn an_open_provider_answers_a_whole_query_then_says_what_choosing_a_row_does() {
             choice,
         };
         let mut session = run
-            .open::<Wire, _>(&plugin, Cap::OpenProvider, &activate, 0)
+            .open::<Wire>(&plugin, Cap::OpenProvider, &activate, 0)
             .unwrap();
         assert_eq!(session.reply().unwrap().message, Message::Activation(want));
     }

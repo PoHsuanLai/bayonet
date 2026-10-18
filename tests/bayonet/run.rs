@@ -15,7 +15,7 @@ fn failure(mode: &str, timeouts: Timeouts, payload_limit: u64) -> RunError<Cap> 
     host.install("demo", &["--mode", mode], PROVIDES);
     let plugin = host.plugin("demo");
     let mut session =
-        match runner(timeouts).open::<Wire, _>(&plugin, Cap::RowFacts, &facts(), payload_limit) {
+        match runner(timeouts).open::<Wire>(&plugin, Cap::RowFacts, &facts(), payload_limit) {
             Ok(session) => session,
             Err(error) => return error,
         };
@@ -82,7 +82,7 @@ fn a_plugin_that_does_not_list_the_capability_is_not_asked() {
     host.install("demo", &["--mode", "lacks"], PROVIDES);
     let plugin = host.plugin("demo");
     let error = runner(quick())
-        .open::<Wire, _>(&plugin, Cap::BlockLens, &facts(), 0)
+        .open::<Wire>(&plugin, Cap::BlockLens, &facts(), 0)
         .unwrap_err();
     assert_eq!(
         error,
@@ -102,7 +102,7 @@ fn a_program_that_cannot_start_is_a_spawn_error() {
         program.path = "/nonexistent/plugin".into();
     }
     let error = runner(quick())
-        .open::<Wire, _>(&plugin, Cap::RowFacts, &facts(), 0)
+        .open::<Wire>(&plugin, Cap::RowFacts, &facts(), 0)
         .unwrap_err();
     assert!(
         matches!(&error, RunError::Spawn { program, .. } if program == "/nonexistent/plugin"),
@@ -119,7 +119,7 @@ fn a_plugin_that_ignores_a_cancel_is_killed_after_the_grace_period() {
         task: "slow".to_owned(),
     };
     let mut session = runner(quick())
-        .open::<Wire, _>(&plugin, Cap::AgentAdapter, &task, 0)
+        .open::<Wire>(&plugin, Cap::AgentAdapter, &task, 0)
         .unwrap();
     let started = Instant::now();
     let error = session
@@ -156,7 +156,7 @@ fn a_stream_that_reports_progress_may_outlast_the_silence_timeout() {
     };
     let timeouts = quick().with_silence(Duration::from_millis(250));
     let mut session = runner(timeouts)
-        .open::<Wire, _>(&plugin, Cap::AgentAdapter, &task, 0)
+        .open::<Wire>(&plugin, Cap::AgentAdapter, &task, 0)
         .unwrap();
     let started = Instant::now();
     session
@@ -201,7 +201,7 @@ fn dropping_a_session_kills_what_the_plugin_started() {
     );
     let plugin = host.plugin("demo");
     let session = runner(quick())
-        .open::<Wire, _>(&plugin, Cap::RowFacts, &facts(), 0)
+        .open::<Wire>(&plugin, Cap::RowFacts, &facts(), 0)
         .unwrap();
     let pid = wait_for_pid(&host.pid_file());
     assert!(
@@ -252,7 +252,7 @@ fn a_log_sink_that_captures_state_receives_the_plugins_stderr_lines() {
         kept.lock().unwrap().push(line.to_owned());
     });
     let error = runner
-        .open::<Wire, _>(&plugin, Cap::RowFacts, &facts(), 0)
+        .open::<Wire>(&plugin, Cap::RowFacts, &facts(), 0)
         .unwrap_err();
     assert!(matches!(error, RunError::Crashed { .. }), "{error:?}");
     assert_eq!(

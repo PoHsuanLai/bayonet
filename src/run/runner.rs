@@ -2,9 +2,8 @@
 
 use super::error::RunError;
 use super::process::{Arrival, Log, Process};
-use super::protocol::Protocol;
+use super::protocol::{Cap, Protocol};
 use super::session::Session;
-use crate::manifest::Provides;
 use crate::registry::Installed;
 use crate::timeouts::Timeouts;
 use crate::wire::Frame;
@@ -56,15 +55,11 @@ impl Runner {
 
     /// What `plugin` says of itself when started: its greeting message, checked against the
     /// protocol the host speaks. Blocking: it starts the plugin and kills it.
-    pub fn hello<W, P>(
+    pub fn hello<W: Protocol>(
         &self,
-        plugin: &Installed<P>,
-    ) -> Result<Frame<W::Message>, RunError<W::Capability>>
-    where
-        W: Protocol,
-        P: Provides<Capability = W::Capability>,
-    {
-        let mut process = self.start::<W, P>(plugin)?;
+        plugin: &Installed<W::Provides>,
+    ) -> Result<Frame<W::Message>, RunError<Cap<W>>> {
+        let mut process = self.start::<W>(plugin)?;
         self.greeting(&mut process)
     }
 
@@ -108,7 +103,7 @@ impl Runner {
     /// }
     /// struct Wire;
     /// impl Protocol for Wire {
-    ///     type Capability = Cap;
+    ///     type Provides = Tool;
     ///     type Request = Ask;
     ///     type Message = Say;
     ///     const VERSION: u32 = 1;
@@ -124,7 +119,7 @@ impl Runner {
     ///     let runner = Runner::new("myapp", Timeouts::default());
     ///     // The plugin is started and greets; the runner checks the greeting and sends the request.
     ///     let request = Ask::Facts { key: "42".to_owned() };
-    ///     let mut session = runner.open::<Wire, _>(plugin, Cap::Facts, &request, 1 << 20)?;
+    ///     let mut session = runner.open::<Wire>(plugin, Cap::Facts, &request, 1 << 20)?;
     ///     // The one reply, within the silence timeout. The session kills the plugin when dropped.
     ///     match session.reply()?.message {
     ///         Say::Facts(rows) => Ok(rows),
@@ -132,18 +127,14 @@ impl Runner {
     ///     }
     /// }
     /// ```
-    pub fn open<W, P>(
+    pub fn open<W: Protocol>(
         &self,
-        plugin: &Installed<P>,
-        capability: W::Capability,
+        plugin: &Installed<W::Provides>,
+        capability: Cap<W>,
         request: &W::Request,
         payload_limit: u64,
-    ) -> Result<Session<W>, RunError<W::Capability>>
-    where
-        W: Protocol,
-        P: Provides<Capability = W::Capability>,
-    {
-        let mut process = self.start::<W, P>(plugin)?;
+    ) -> Result<Session<W>, RunError<Cap<W>>> {
+        let mut process = self.start::<W>(plugin)?;
         let hello = self.greeting(&mut process)?;
         let answers = W::greeting(&hello.message)
             .is_some_and(|greeting| greeting.provides.contains(&capability));
@@ -158,11 +149,10 @@ impl Runner {
         Ok(Session::new(process, self.timeouts))
     }
 
-    fn start<W, P>(&self, plugin: &Installed<P>) -> Result<Process<W>, RunError<W::Capability>>
-    where
-        W: Protocol,
-        P: Provides<Capability = W::Capability>,
-    {
+    fn start<W: Protocol>(
+        &self,
+        plugin: &Installed<W::Provides>,
+    ) -> Result<Process<W>, RunError<Cap<W>>> {
         Process::spawn(
             &plugin.manifest.id,
             plugin.manifest.program.as_ref(),
@@ -174,7 +164,7 @@ impl Runner {
     fn greeting<W: Protocol>(
         &self,
         process: &mut Process<W>,
-    ) -> Result<Frame<W::Message>, RunError<W::Capability>> {
+    ) -> Result<Frame<W::Message>, RunError<Cap<W>>> {
         let frame = match process.receive(self.timeouts.hello)? {
             Arrival::Message(frame) => frame,
             Arrival::Quiet => {

@@ -1,6 +1,6 @@
 //! What a host teaches bayonet about its wire.
 
-use crate::capability::Capability;
+use crate::manifest::Provides;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
@@ -14,6 +14,9 @@ pub struct Greeting<'a, C> {
     pub provides: &'a [C],
 }
 
+/// The capability type of the host whose protocol is `W`.
+pub type Cap<W> = <<W as Protocol>::Provides as Provides>::Capability;
+
 /// A host's protocol: the messages it and its plugins exchange. A host implements it for a
 /// marker type, and [`Runner`](super::Runner) and [`Session`](super::Session) are generic over
 /// that type.
@@ -22,8 +25,8 @@ pub struct Greeting<'a, C> {
 /// [`Greeting`]; the host then sends one request; the plugin answers with one message or a
 /// stream of them. The shape of the requests and answers is the host's.
 pub trait Protocol {
-    /// The host's capability type.
-    type Capability: Capability;
+    /// The host's `[[provides]]` type; its capability is the one the wire speaks.
+    type Provides: Provides;
     /// What the host says to a plugin.
     type Request: Serialize;
     /// What a plugin says to the host, the greeting included.
@@ -33,5 +36,5 @@ pub trait Protocol {
     const VERSION: u32;
 
     /// The greeting `message` carries, or `None` when it is not the greeting.
-    fn greeting(message: &Self::Message) -> Option<Greeting<'_, Self::Capability>>;
+    fn greeting(message: &Self::Message) -> Option<Greeting<'_, Cap<Self>>>;
 }

@@ -24,7 +24,7 @@ fn failure(fault: &str, timeouts: Timeouts, payload_limit: u64) -> RunError<Cap>
     let host = host_with(fault);
     let plugin = host.plugin("fake");
     let mut session =
-        match runner(timeouts).open::<Wire, _>(&plugin, Cap::RowFacts, &facts(), payload_limit) {
+        match runner(timeouts).open::<Wire>(&plugin, Cap::RowFacts, &facts(), payload_limit) {
             Ok(session) => session,
             Err(error) => return error,
         };
@@ -46,7 +46,7 @@ fn a_fake_that_does_not_fail_answers_the_request() {
         let host = host_with(fault);
         let plugin = host.plugin("fake");
         let mut session = runner(quick())
-            .open::<Wire, _>(&plugin, Cap::RowFacts, &facts(), 0)
+            .open::<Wire>(&plugin, Cap::RowFacts, &facts(), 0)
             .unwrap();
         let reply = session.reply().unwrap();
         assert!(
@@ -104,7 +104,7 @@ fn adapt_slow(fault: &str) -> Result<(), RunError<Cap>> {
         task: "slow".to_owned(),
     };
     let mut session = runner(quick())
-        .open::<Wire, _>(&plugin, Cap::AgentAdapter, &task, 0)
+        .open::<Wire>(&plugin, Cap::AgentAdapter, &task, 0)
         .unwrap();
     session.stream(
         |_| true,
