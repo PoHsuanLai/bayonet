@@ -5,9 +5,13 @@
 /// does with it, for instance offer to install it).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Package<H> {
-    name: &'static str,
-    helper: H,
-    tool: Option<&'static str>,
+    /// The package's name, as every distribution that ships it spells it.
+    pub name: &'static str,
+    /// The host's handle for the tool the package's plugin runs.
+    pub helper: H,
+    /// The file name of the program of the system's that the plugin's manifest names, if it names
+    /// one.
+    pub tool: Option<&'static str>,
 }
 
 impl<H: Copy> Package<H> {
@@ -16,22 +20,6 @@ impl<H: Copy> Package<H> {
     /// absent the plugin is installed and the tool is what is missing.
     pub const fn new(name: &'static str, helper: H, tool: Option<&'static str>) -> Package<H> {
         Package { name, helper, tool }
-    }
-
-    /// The package's name, as every distribution that ships it spells it.
-    pub fn name(self) -> &'static str {
-        self.name
-    }
-
-    /// The host's handle for the tool the package's plugin runs.
-    pub fn helper(self) -> H {
-        self.helper
-    }
-
-    /// The file name of the program of the system's that the plugin's manifest names, if it names
-    /// one.
-    pub fn tool(self) -> Option<&'static str> {
-        self.tool
     }
 }
 
@@ -65,7 +53,7 @@ pub struct Suggestion<C, K, H> {
 /// }];
 ///
 /// let package = suggest(TABLE, Capability::Play, |kind| *kind == "video");
-/// assert_eq!(package.map(Package::name), Some("mpv"));
+/// assert_eq!(package.map(|package| package.name), Some("mpv"));
 /// assert!(suggest(TABLE, Capability::Play, |kind| *kind == "audio").is_none());
 /// ```
 pub fn suggest<C: PartialEq, K, H: Copy>(
@@ -122,7 +110,7 @@ mod tests {
         ];
         for (name, capability, asked, want) in CASES {
             let got = suggest(TABLE, *capability, |key| key.is_none_or(|k| k == *asked))
-                .map(|p| (p.name(), p.tool(), p.helper()));
+                .map(|p| (p.name, p.tool, p.helper));
             assert_eq!(got, *want, "{name}");
         }
     }
