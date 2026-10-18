@@ -113,14 +113,14 @@ fn an_agent_adapter_streams_events_until_it_finishes() {
         .stream(
             |_| false,
             &Request::Cancel,
-            |_, frame| -> Result<ControlFlow<()>, RunError<Cap>> {
+            |id, frame| -> Result<ControlFlow<()>, RunError<Cap>> {
                 match frame.message {
                     Message::Event { text } => {
                         events.push(text);
                         Ok(ControlFlow::Continue(()))
                     }
                     Message::Finished => Ok(ControlFlow::Break(())),
-                    other => Err(RunError::unexpected("demo", &other)),
+                    other => Err(RunError::unexpected(id, &other)),
                 }
             },
         )
@@ -149,7 +149,7 @@ fn an_open_provider_feeds_a_launcher_sink_and_a_newer_keystroke_cancels_it() {
         .stream(
             |_| keystroke.get(),
             &Request::Cancel,
-            |_, frame| -> Result<ControlFlow<String>, RunError<Cap>> {
+            |id, frame| -> Result<ControlFlow<String>, RunError<Cap>> {
                 match frame.message {
                     Message::Batch(batch) => {
                         sink.push(batch);
@@ -158,7 +158,7 @@ fn an_open_provider_feeds_a_launcher_sink_and_a_newer_keystroke_cancels_it() {
                         Ok(ControlFlow::Continue(()))
                     }
                     Message::Failed { message } => Ok(ControlFlow::Break(message)),
-                    other => Err(RunError::unexpected("demo", &other)),
+                    other => Err(RunError::unexpected(id, &other)),
                 }
             },
         )
@@ -184,14 +184,14 @@ fn an_open_provider_answers_a_whole_query_then_says_what_choosing_a_row_does() {
         .stream(
             |_| false,
             &Request::Cancel,
-            |_, frame| -> Result<ControlFlow<()>, RunError<Cap>> {
+            |id, frame| -> Result<ControlFlow<()>, RunError<Cap>> {
                 match frame.message {
                     Message::Batch(batch) => {
                         rows.extend(batch.items);
                         Ok(ControlFlow::Continue(()))
                     }
                     Message::Complete => Ok(ControlFlow::Break(())),
-                    other => Err(RunError::unexpected("demo", &other)),
+                    other => Err(RunError::unexpected(id, &other)),
                 }
             },
         )

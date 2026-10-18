@@ -54,7 +54,7 @@ impl fmt::Debug for Log {
 /// A running plugin. Dropping it kills the process and reaps it.
 #[derive(Debug)]
 pub(super) struct Process<W: Protocol> {
-    id: String,
+    id: PluginId,
     child: Child,
     stdin: Option<ChildStdin>,
     stdout: ChildStdout,
@@ -77,7 +77,7 @@ impl<W: Protocol> Process<W> {
         program: Option<&Program>,
         log: Log,
     ) -> Result<Process<W>, RunError<Cap<W>>> {
-        let id = id.as_str().to_owned();
+        let id = id.clone();
         let program = program.ok_or_else(|| RunError::broke(&id, "the manifest has no program"))?;
         // A group of its own, so that killing the plugin kills what it started too.
         let mut child = Command::new(&program.path)
@@ -119,7 +119,7 @@ impl<W: Protocol> Process<W> {
     }
 
     /// The plugin's id, for errors.
-    pub(super) fn id(&self) -> &str {
+    pub(super) fn id(&self) -> &PluginId {
         &self.id
     }
 

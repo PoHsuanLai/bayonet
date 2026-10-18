@@ -3,6 +3,7 @@
 use super::error::RunError;
 use super::process::{Arrival, Process};
 use super::protocol::{Cap, Protocol};
+use crate::manifest::PluginId;
 use crate::timeouts::Timeouts;
 use crate::wire::Frame;
 use std::fmt;
@@ -34,7 +35,7 @@ impl<W: Protocol> Session<W> {
     }
 
     /// The plugin's id.
-    pub fn id(&self) -> &str {
+    pub fn id(&self) -> &PluginId {
         self.process.id()
     }
 
@@ -55,7 +56,7 @@ impl<W: Protocol> Session<W> {
         match self.process.receive(self.timeouts.silence)? {
             Arrival::Message(frame) => Ok(frame),
             Arrival::Quiet => Err(RunError::Silent {
-                plugin: self.id().to_owned(),
+                plugin: self.id().clone(),
                 waited: self.timeouts.silence,
             }),
         }
@@ -72,7 +73,7 @@ impl<W: Protocol> Session<W> {
         &mut self,
         mut cancel: impl FnMut(Instant) -> bool,
         cancel_request: &W::Request,
-        mut on_message: impl FnMut(&str, Frame<W::Message>) -> Result<ControlFlow<T>, E>,
+        mut on_message: impl FnMut(&PluginId, Frame<W::Message>) -> Result<ControlFlow<T>, E>,
     ) -> Result<T, E>
     where
         E: From<RunError<Cap<W>>>,
@@ -84,7 +85,7 @@ impl<W: Protocol> Session<W> {
             if let Some(since) = asked_to_cancel {
                 if now.duration_since(since) >= self.timeouts.cancel_grace {
                     return Err(RunError::Cancelled {
-                        plugin: self.id().to_owned(),
+                        plugin: self.id().clone(),
                     }
                     .into());
                 }
@@ -94,7 +95,7 @@ impl<W: Protocol> Session<W> {
             }
             if now.duration_since(quiet_since) >= self.timeouts.silence {
                 return Err(RunError::Silent {
-                    plugin: self.id().to_owned(),
+                    plugin: self.id().clone(),
                     waited: self.timeouts.silence,
                 }
                 .into());

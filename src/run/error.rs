@@ -1,5 +1,6 @@
 //! Why a run failed.
 
+use crate::manifest::PluginId;
 use std::fmt::Debug;
 use std::time::Duration;
 
@@ -20,7 +21,7 @@ pub enum RunError<C: Debug> {
     #[error("the plugin {plugin} was silent for {waited:?}")]
     Silent {
         /// The plugin's id.
-        plugin: String,
+        plugin: PluginId,
         /// How long the host waited.
         waited: Duration,
     },
@@ -28,7 +29,7 @@ pub enum RunError<C: Debug> {
     #[error("the plugin {plugin} ended without an answer ({status})")]
     Crashed {
         /// The plugin's id.
-        plugin: String,
+        plugin: PluginId,
         /// How it ended, with the last line it wrote to stderr when it wrote one.
         status: String,
     },
@@ -36,7 +37,7 @@ pub enum RunError<C: Debug> {
     #[error("the plugin {plugin} broke the protocol: {reason}")]
     Protocol {
         /// The plugin's id.
-        plugin: String,
+        plugin: PluginId,
         /// What was wrong.
         reason: String,
     },
@@ -44,7 +45,7 @@ pub enum RunError<C: Debug> {
     #[error("the plugin {plugin} speaks protocol {offered}, the host speaks {supported}")]
     Version {
         /// The plugin's id.
-        plugin: String,
+        plugin: PluginId,
         /// What it said in its greeting.
         offered: u32,
         /// What the host speaks.
@@ -54,7 +55,7 @@ pub enum RunError<C: Debug> {
     #[error("the plugin {plugin} does not answer {capability:?}")]
     Lacks {
         /// The plugin's id.
-        plugin: String,
+        plugin: PluginId,
         /// What was asked.
         capability: C,
     },
@@ -62,21 +63,21 @@ pub enum RunError<C: Debug> {
     #[error("the plugin {plugin} was stopped")]
     Cancelled {
         /// The plugin's id.
-        plugin: String,
+        plugin: PluginId,
     },
 }
 
 impl<C: Debug> RunError<C> {
     /// The plugin `plugin` broke the protocol for `reason`.
-    pub fn broke(plugin: &str, reason: impl Into<String>) -> RunError<C> {
+    pub fn broke(plugin: &PluginId, reason: impl Into<String>) -> RunError<C> {
         RunError::Protocol {
-            plugin: plugin.to_owned(),
+            plugin: plugin.clone(),
             reason: reason.into(),
         }
     }
 
     /// The plugin `plugin` sent `message`, which the host did not expect at that point.
-    pub fn unexpected(plugin: &str, message: &impl Debug) -> RunError<C> {
+    pub fn unexpected(plugin: &PluginId, message: &impl Debug) -> RunError<C> {
         RunError::broke(plugin, format!("did not expect {message:?}"))
     }
 }

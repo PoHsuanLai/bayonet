@@ -3,6 +3,7 @@
 
 use crate::support::shapes::{Cap, Message, Request, Wire};
 use crate::support::{Host, PROVIDES, facts, quick, runner};
+use bayonet::manifest::PluginId;
 use bayonet::run::{RunError, Runner, Timeouts};
 use std::ops::ControlFlow;
 use std::path::Path;
@@ -36,7 +37,7 @@ fn a_plugin_that_fails_in_some_way_is_an_error_naming_it() {
             "mute",
             hello_fast,
             0,
-            |e| matches!(e, RunError::Silent { plugin, waited } if plugin == "demo" && *waited == Duration::from_millis(300)),
+            |e| matches!(e, RunError::Silent { plugin, waited } if plugin.as_str() == "demo" && *waited == Duration::from_millis(300)),
         ),
         (
             "dies before greeting",
@@ -87,7 +88,7 @@ fn a_plugin_that_does_not_list_the_capability_is_not_asked() {
     assert_eq!(
         error,
         RunError::Lacks {
-            plugin: "demo".to_owned(),
+            plugin: PluginId::parse("demo").unwrap(),
             capability: Cap::BlockLens
         }
     );
@@ -126,10 +127,10 @@ fn a_plugin_that_ignores_a_cancel_is_killed_after_the_grace_period() {
         .stream(
             |_| true,
             &Request::Cancel,
-            |_, frame| -> Result<ControlFlow<()>, RunError<Cap>> {
+            |id, frame| -> Result<ControlFlow<()>, RunError<Cap>> {
                 match frame.message {
                     Message::Event { .. } => Ok(ControlFlow::Continue(())),
-                    other => Err(RunError::unexpected("demo", &other)),
+                    other => Err(RunError::unexpected(id, &other)),
                 }
             },
         )
@@ -137,7 +138,7 @@ fn a_plugin_that_ignores_a_cancel_is_killed_after_the_grace_period() {
     assert_eq!(
         error,
         RunError::Cancelled {
-            plugin: "demo".to_owned()
+            plugin: PluginId::parse("demo").unwrap()
         }
     );
     assert!(
@@ -163,7 +164,7 @@ fn a_stream_that_reports_progress_may_outlast_the_silence_timeout() {
         .stream(
             |_| false,
             &Request::Cancel,
-            |_, frame| -> Result<ControlFlow<()>, RunError<Cap>> {
+            |id, frame| -> Result<ControlFlow<()>, RunError<Cap>> {
                 match frame.message {
                     Message::Event { .. } => {
                         // The silence wait starts again with every message; stop after it has
@@ -175,7 +176,7 @@ fn a_stream_that_reports_progress_may_outlast_the_silence_timeout() {
                             ControlFlow::Continue(())
                         })
                     }
-                    other => Err(RunError::unexpected("demo", &other)),
+                    other => Err(RunError::unexpected(id, &other)),
                 }
             },
         )

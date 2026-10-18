@@ -140,7 +140,7 @@ impl Runner {
             .is_some_and(|greeting| greeting.provides.contains(&capability));
         if !answers {
             return Err(RunError::Lacks {
-                plugin: process.id().to_owned(),
+                plugin: process.id().clone(),
                 capability,
             });
         }
@@ -169,7 +169,7 @@ impl Runner {
             Arrival::Message(frame) => frame,
             Arrival::Quiet => {
                 return Err(RunError::Silent {
-                    plugin: process.id().to_owned(),
+                    plugin: process.id().clone(),
                     waited: self.timeouts.hello,
                 });
             }
@@ -179,7 +179,7 @@ impl Runner {
         };
         if greeting.protocol != W::VERSION {
             return Err(RunError::Version {
-                plugin: process.id().to_owned(),
+                plugin: process.id().clone(),
                 offered: greeting.protocol,
                 supported: W::VERSION,
             });

@@ -3,6 +3,7 @@
 
 use crate::support::shapes::{Cap, Message, Request, Wire};
 use crate::support::{Host, PROVIDES, example_program, facts, quick, runner};
+use bayonet::manifest::PluginId;
 use bayonet::run::{RunError, Timeouts};
 use bayonet::testing::Fault;
 use std::ops::ControlFlow;
@@ -109,11 +110,11 @@ fn adapt_slow(fault: &str) -> Result<(), RunError<Cap>> {
     session.stream(
         |_| true,
         &Request::Cancel,
-        |_, frame| -> Result<ControlFlow<()>, RunError<Cap>> {
+        |id, frame| -> Result<ControlFlow<()>, RunError<Cap>> {
             match frame.message {
                 Message::Event { .. } => Ok(ControlFlow::Continue(())),
                 Message::Failed { .. } => Ok(ControlFlow::Break(())),
-                other => Err(RunError::unexpected("fake", &other)),
+                other => Err(RunError::unexpected(id, &other)),
             }
         },
     )
@@ -125,7 +126,7 @@ fn a_fake_stops_on_a_cancel_unless_it_ignores_it() {
     assert_eq!(
         adapt_slow(Fault::IgnoreCancel.name()),
         Err(RunError::Cancelled {
-            plugin: "fake".to_owned()
+            plugin: PluginId::parse("fake").unwrap()
         })
     );
 }
