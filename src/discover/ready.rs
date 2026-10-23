@@ -1,21 +1,11 @@
 //! Whether the files a manifest names are there, can be run, and stay in the plugin's folder.
 
-use crate::manifest::{Manifest, ManifestError, PathRole, Provides};
+use crate::manifest::{Manifest, ManifestError, PathReach, PathRole, Provides};
 use crate::registry::Readiness;
 use std::fs;
 use std::path::Path;
 
 type Failure<P> = ManifestError<<P as Provides>::Capability, <P as Provides>::Fault>;
-
-/// Where a path may point when the manifest has a folder.
-#[derive(Clone, Copy)]
-enum Reach {
-    /// Anywhere; a path that is in the folder is still checked for links out of it. A packaged
-    /// program is installed elsewhere.
-    Anywhere,
-    /// Inside the folder only.
-    Folder,
-}
 
 /// The first path the manifest names that is missing, cannot be run or leaves its `folder`, or
 /// `Ready`.
@@ -27,14 +17,16 @@ pub(super) fn readiness<P: Provides>(
         (
             program.path.as_path(),
             PathRole::Executable,
-            Reach::Anywhere,
+            PathReach::Anywhere,
         )
     });
-    let entries = manifest
-        .provides
-        .iter()
-        .flat_map(Provides::paths)
-        .map(|(path, role)| (path, role, Reach::Folder));
+    let entries = manifest.provides.iter().flat_map(|entry| {
+        let reach = entry.reach();
+        entry
+            .paths()
+            .into_iter()
+            .map(move |(path, role)| (path, role, reach))
+    });
     let problem = program
         .chain(entries)
         .find_map(|(path, role, reach)| check::<P>(path, role, reach, folder).err());
@@ -47,7 +39,7 @@ pub(super) fn readiness<P: Provides>(
 fn check<P: Provides>(
     path: &Path,
     role: PathRole,
-    reach: Reach,
+    reach: PathReach,
     folder: Option<&Path>,
 ) -> Result<(), Failure<P>> {
     if let Some(folder) = folder {
@@ -70,11 +62,11 @@ fn check<P: Provides>(
 
 /// Refuses a path that is not in `folder`, or is but reaches out of it through a link. A path
 /// that does not exist is left to the existence check.
-fn confined<P: Provides>(folder: &Path, path: &Path, reach: Reach) -> Result<(), Failure<P>> {
+fn confined<P: Provides>(folder: &Path, path: &Path, reach: PathReach) -> Result<(), Failure<P>> {
     if !path.starts_with(folder) {
         return match reach {
-            Reach::Anywhere => Ok(()),
-            Reach::Folder => Err(ManifestError::PathEscapes {
+            PathReach::Anywhere => Ok(()),
+            PathReach::Folder => Err(ManifestError::PathEscapes {
                 path: path.to_path_buf(),
             }),
         };

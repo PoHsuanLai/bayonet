@@ -34,7 +34,7 @@ pub use error::ManifestError;
 pub use id::{InvalidId, PluginId};
 pub use model::{Manifest, Program};
 pub(crate) use parse::{check_program, typed_entries};
-pub use provides::{Entry, PathRole, Provides, Refusal, absolute};
+pub use provides::{Entry, PathReach, PathRole, Provides, Refusal, absolute};
 pub use raw::{Raw, RawCapability};
 pub use version::{InvalidVersion, Version};
 

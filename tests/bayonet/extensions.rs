@@ -1,7 +1,9 @@
 //! The folder layout, the envelope's `version`, and the two-step read of raw entries, against
 //! scratch directories.
 
-use bayonet::manifest::{Entry, Manifest, ManifestError, PathRole, Provides, Raw, Refusal};
+use bayonet::manifest::{
+    Entry, Manifest, ManifestError, PathReach, PathRole, Provides, Raw, Refusal, absolute,
+};
 use bayonet::registry::{Origin, Registry};
 use bayonet::{Discovery, Layout, Search, discover, reparse, scan};
 use serde::Deserialize;
@@ -54,6 +56,47 @@ impl Provides for Icons {
 
     fn paths(&self) -> Vec<(&Path, PathRole)> {
         vec![(self.file.as_path(), PathRole::Library)]
+    }
+}
+
+/// An entry of a second test owner: a player that names a library installed elsewhere.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Player {
+    library: PathBuf,
+}
+
+#[derive(Deserialize)]
+struct PlayerFields {
+    #[allow(dead_code)]
+    capability: Word,
+    library: PathBuf,
+}
+
+impl Provides for Player {
+    type Capability = Word;
+    type Fault = Infallible;
+
+    fn parse(entry: Entry) -> Result<Player, Refusal<Infallible>> {
+        let fields: PlayerFields = entry.read()?;
+        Ok(Player {
+            library: absolute(fields.library)?,
+        })
+    }
+
+    fn capability(&self) -> Word {
+        Word::FileIcons
+    }
+
+    fn needs_program(&self) -> bool {
+        false
+    }
+
+    fn reach(&self) -> PathReach {
+        PathReach::Anywhere
+    }
+
+    fn paths(&self) -> Vec<(&Path, PathRole)> {
+        vec![(self.library.as_path(), PathRole::Library)]
     }
 }
 
@@ -200,6 +243,41 @@ fn a_path_that_leaves_the_folder_is_a_manifest_error() {
         raw.rejected[0].error,
         ManifestError::PathEscapes { .. }
     ));
+}
+
+#[test]
+fn an_entry_that_reaches_anywhere_may_name_a_file_outside_its_folder_but_not_a_missing_one() {
+    let s = Scratch::new();
+    let outside = s.root.path().join("libplayer.so");
+    fs::write(&outside, "lib").unwrap();
+    let entry = |library: &Path| {
+        format!(
+            "[[provides]]\ncapability = \"file_icons\"\nlibrary = \"{}\"\n",
+            library.display()
+        )
+    };
+    let id = "org.example.Player";
+    s.extension(s.user(), id, &text(id, "", &entry(&outside)));
+    let user = s.user();
+    let found = discover::<Player>(&search(&user, &[]));
+    assert_eq!(installed_ids(&found.registry), [id]);
+
+    let gone = s.root.path().join("libgone.so");
+    s.extension(s.user(), id, &text(id, "", &entry(&gone)));
+    let found = discover::<Player>(&search(&user, &[]));
+    assert!(found.registry.installed().is_empty());
+    assert!(matches!(
+        &found.registry.unusable()[0].reason,
+        ManifestError::FileMissing { path } if path == &gone
+    ));
+}
+
+fn installed_ids<P: Provides>(registry: &Registry<P>) -> Vec<String> {
+    registry
+        .installed()
+        .iter()
+        .map(|p| p.manifest.id.as_str().to_owned())
+        .collect()
 }
 
 #[cfg(unix)]

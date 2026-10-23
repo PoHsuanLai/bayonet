@@ -16,6 +16,17 @@ pub enum PathRole {
     Library,
 }
 
+/// Where the paths an entry names may point when the plugin has a folder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PathReach {
+    /// Inside the plugin's folder only: the entry's files are the folder's own.
+    Folder,
+    /// Anywhere, as `[program] path` may: programs and libraries installed elsewhere (a player's
+    /// `mpv` and the plugin loaded into it). A path that is in the folder is still checked for
+    /// links out of it.
+    Anywhere,
+}
+
 /// One `[[provides]]` table, as the manifest wrote it, for the host to read.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Entry {
@@ -123,6 +134,13 @@ pub trait Provides: Sized + fmt::Debug + Clone + Eq {
     /// only names files (a player the host starts itself) answers no.
     fn needs_program(&self) -> bool {
         true
+    }
+
+    /// Where the entry's [`paths`](Provides::paths) may point. Inside the folder by default; an
+    /// entry that names a system program or library says [`PathReach::Anywhere`], and those
+    /// paths are then only checked to exist and, for an executable, to run.
+    fn reach(&self) -> PathReach {
+        PathReach::Folder
     }
 
     /// Every path the entry names that must be there before the plugin is usable.

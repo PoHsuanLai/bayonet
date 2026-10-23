@@ -23,6 +23,12 @@ versioning.
   `Candidate<Raw>` into the owner's `Candidate<P>`, reporting entries whose word `P` does not own
   (`Provides::owns`) as `Skipped`, then `Registry::resolve` runs. `Provides::repeats` lets a type
   with one value for every capability say which entries repeat.
+- `Provides::reach` and `manifest::PathReach { Folder, Anywhere }`: an entry that names a program or
+  library installed elsewhere (a player's `mpv` and the plugin loaded into it) says `Anywhere`, and
+  its paths are only checked to exist and, for an executable, to run, as `[program] path` is. The
+  default stays `Folder`.
+- `Version` accepts a semver pre-release (`0.1.0-beta.1`), ranked below its release; pre-release
+  parts compare as semver does (digits as numbers, below words; a longer list after its prefix).
 
 ## 0.2.0
 
