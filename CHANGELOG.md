@@ -3,6 +3,27 @@
 All notable changes to bayonet. The format follows Keep a Changelog; versions follow semantic
 versioning.
 
+## Unreleased
+
+### Added
+
+- The folder layout: `Layout::Folders { dir, manifest }` and `Search::with_layout` find
+  `<data dir>/<app>/<dir>/<id>/<manifest>`, where the folder name is the id (reverse DNS, via
+  `PluginId::parse_dotted`) and a manifest read with `Manifest::parse_in_folder` keeps its paths
+  inside the folder: `Entry::resolve` gives a host's entry the same rule, `[program] path` may also
+  be absolute, and `..`, an absolute entry path or a symlink out is `ManifestError::PathEscapes`.
+  `Search::new` is unchanged and means the flat `<app>/plugins/*.toml` layout.
+- Envelope fields `version` (`manifest::Version`, a dotted version compared numerically),
+  `licence` and `summary` on `Manifest`, all optional. New `ManifestError` variants
+  `VersionInvalid`, `IdFolderMismatch` and `PathEscapes`, and `Refusal::PathEscapes`.
+- `Registry` ranking breaks a tie between candidates of one id by the newer `version` after the
+  person's directory over the system's (a manifest with a version beats one without).
+- A two-step read: `scan` returns every candidate unranked; `manifest::Raw` is a `Provides` that
+  keeps each `[[provides]]` entry as TOML with its `capability` word; `reparse` turns a
+  `Candidate<Raw>` into the owner's `Candidate<P>`, reporting entries whose word `P` does not own
+  (`Provides::owns`) as `Skipped`, then `Registry::resolve` runs. `Provides::repeats` lets a type
+  with one value for every capability say which entries repeat.
+
 ## 0.2.0
 
 ### Added

@@ -30,6 +30,25 @@ impl PluginId {
         }
     }
 
+    /// `text` as a reverse-DNS id such as `org.example.Paper`: dot-separated words of letters,
+    /// digits, `-` and `_`, up to 128 characters. It names an extension's folder, so it can
+    /// never be empty, hold a slash, or be `.` or `..`.
+    pub fn parse_dotted(text: &str) -> Result<PluginId, InvalidId> {
+        let word = |word: &str| {
+            !word.is_empty()
+                && word
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        };
+        if text.len() <= 128 && text.split('.').all(word) {
+            Ok(PluginId(text.to_owned()))
+        } else {
+            Err(InvalidId {
+                id: text.to_owned(),
+            })
+        }
+    }
+
     /// The id.
     pub fn as_str(&self) -> &str {
         &self.0
@@ -63,6 +82,28 @@ mod tests {
         ];
         for (name, text, ok) in cases {
             assert_eq!(PluginId::parse(text).is_ok(), *ok, "{name}");
+        }
+    }
+
+    #[test]
+    fn a_dotted_id_is_words_between_single_dots() {
+        let long = format!("a.{}", "b".repeat(128));
+        let cases: &[(&str, &str, bool)] = &[
+            ("reverse dns", "org.example.Paper", true),
+            ("one word", "heif", true),
+            ("separators", "org.my-co.Tool_2", true),
+            ("empty", "", false),
+            ("dot only", ".", false),
+            ("parent", "..", false),
+            ("leading dot", ".hidden", false),
+            ("trailing dot", "org.", false),
+            ("double dot", "org..x", false),
+            ("slash", "org/x", false),
+            ("space", "org x", false),
+            ("too long", &long, false),
+        ];
+        for (name, text, ok) in cases {
+            assert_eq!(PluginId::parse_dotted(text).is_ok(), *ok, "{name}");
         }
     }
 }

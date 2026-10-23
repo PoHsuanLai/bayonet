@@ -3,6 +3,7 @@
 use super::error::ManifestError;
 use super::id::PluginId;
 use super::provides::{PathRole, Provides};
+use super::version::Version;
 use std::path::{Path, PathBuf};
 
 /// The executable that speaks the wire, and the arguments it is started with.
@@ -23,6 +24,13 @@ pub struct Manifest<P> {
     pub name: String,
     /// The newest protocol version it speaks.
     pub protocol: u32,
+    /// Which release of the plugin this is; absent when the manifest does not say. It breaks a
+    /// tie between two copies of one id.
+    pub version: Option<Version>,
+    /// The licence as an SPDX expression, kept as text.
+    pub licence: Option<String>,
+    /// One line saying what the plugin is for.
+    pub summary: Option<String>,
     /// What speaks the wire; absent for a plugin whose capabilities need no program.
     pub program: Option<Program>,
     /// What it provides, one entry for each capability.
@@ -45,6 +53,25 @@ impl<P: Provides> Manifest<P> {
             Err(ManifestError::IdFileMismatch {
                 id: self.id.as_str().to_owned(),
                 file: stem.to_owned(),
+            })
+        }
+    }
+
+    /// Checks that the folder the manifest was read from is called `<id>`.
+    pub fn check_folder_name(
+        &self,
+        folder: &Path,
+    ) -> Result<(), ManifestError<P::Capability, P::Fault>> {
+        let name = folder
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default();
+        if name == self.id.as_str() {
+            Ok(())
+        } else {
+            Err(ManifestError::IdFolderMismatch {
+                id: self.id.as_str().to_owned(),
+                folder: name.to_owned(),
             })
         }
     }

@@ -7,6 +7,7 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 
 mod capabilities;
+mod extensions;
 mod guard;
 mod run;
 mod support;

@@ -4,16 +4,21 @@ mod entries;
 
 pub use entries::{Candidate, Fit, Installed, Origin, Readiness, Unusable};
 
-use crate::manifest::{PluginId, Provides};
+use crate::manifest::{PluginId, Provides, Version};
 use std::cmp::Reverse;
 
 /// The installed plugins, in the order that decides which serves a request.
 ///
 /// Among manifests with one id, those with an unusable program or a protocol newer than the
-/// host's are set aside first; of the rest the higher protocol version wins, and at equal
-/// versions the person's directory wins over the system's. Plugins with different ids are tried
-/// in that same order, then by id, so which one serves a request never depends on the order the
-/// disk listed the files in.
+/// host's are set aside first. The rest are ordered by, in turn:
+///
+/// 1. the higher `protocol`;
+/// 2. the person's directory over the system's;
+/// 3. the higher `version` (compared number by number; a manifest that has one beats one that
+///    has none).
+///
+/// The first of them is kept. Plugins with different ids are tried in that same order, then by
+/// id, so which one serves a request never depends on the order the disk listed the files in.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Registry<P: Provides> {
     installed: Vec<Installed<P>>,
@@ -162,11 +167,20 @@ fn usability<P: Provides>(
     }
 }
 
-/// The serving order: newer protocol first, then the person's before the system's, then by id.
-fn rank<P>(plugin: &Installed<P>) -> (Reverse<u32>, Reverse<Origin>, PluginId) {
+type Rank = (
+    Reverse<u32>,
+    Reverse<Origin>,
+    Reverse<Option<Version>>,
+    PluginId,
+);
+
+/// The serving order: newer protocol first, then the person's before the system's, then the newer
+/// version, then by id.
+fn rank<P>(plugin: &Installed<P>) -> Rank {
     (
         Reverse(plugin.manifest.protocol),
         Reverse(plugin.origin),
+        Reverse(plugin.manifest.version.clone()),
         plugin.manifest.id.clone(),
     )
 }

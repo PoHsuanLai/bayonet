@@ -38,6 +38,27 @@ pub enum ManifestError<C: fmt::Debug, E: std::error::Error> {
     /// The name is empty.
     #[error("the manifest has no name")]
     NameEmpty,
+    /// The folder is not named for the id.
+    #[error("the manifest names the id {id:?} but the folder is called {folder:?}")]
+    IdFolderMismatch {
+        /// The id inside.
+        id: String,
+        /// The folder's name.
+        folder: String,
+    },
+    /// The version is not dotted numbers.
+    #[error("not a version: {version:?}")]
+    VersionInvalid {
+        /// The version as written.
+        version: String,
+    },
+    /// A path leaves the plugin's folder: it is absolute, climbs with `..`, or goes out through
+    /// a symbolic link.
+    #[error("the path {path:?} is outside the plugin's folder")]
+    PathEscapes {
+        /// The path as written, or as resolved when it escaped through a link.
+        path: PathBuf,
+    },
     /// The protocol version is zero.
     #[error("protocol versions start at 1")]
     ProtocolZero,
@@ -104,6 +125,18 @@ impl<C: fmt::Debug, E: std::error::Error> fmt::Debug for ManifestError<C, E> {
                 .field("id", id)
                 .field("file", file)
                 .finish(),
+            ManifestError::IdFolderMismatch { id, folder } => f
+                .debug_struct("IdFolderMismatch")
+                .field("id", id)
+                .field("folder", folder)
+                .finish(),
+            ManifestError::VersionInvalid { version } => f
+                .debug_struct("VersionInvalid")
+                .field("version", version)
+                .finish(),
+            ManifestError::PathEscapes { path } => {
+                f.debug_struct("PathEscapes").field("path", path).finish()
+            }
             ManifestError::NameEmpty => f.write_str("NameEmpty"),
             ManifestError::ProtocolZero => f.write_str("ProtocolZero"),
             ManifestError::NothingProvided => f.write_str("NothingProvided"),

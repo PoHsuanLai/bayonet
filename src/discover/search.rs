@@ -1,17 +1,34 @@
 //! Finding the plugins: the manifests in the data directories, and whether the programs they
 //! name are there.
 
-use crate::manifest::{Manifest, ManifestError, PathRole, Provides};
-use crate::registry::{Candidate, Origin, Readiness, Registry};
-use std::fs;
+use super::scan::{read_candidate, sources};
+use crate::manifest::{ManifestError, Provides};
+use crate::registry::{Candidate, Origin, Registry};
 use std::path::{Path, PathBuf};
+
+/// Where in a data directory the manifests are.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Layout<'a> {
+    /// One file for each plugin, `<data dir>/<app>/plugins/<id>.toml`; the file name is the id.
+    #[default]
+    Flat,
+    /// One folder for each plugin, `<data dir>/<app>/<dir>/<id>/<manifest>`; the folder name is
+    /// the id, and the plugin's own files sit beside the manifest. A folder without the
+    /// manifest file is not a plugin and is not listed anywhere.
+    Folders {
+        /// The folder of plugin folders under the app's (`extensions`).
+        dir: &'a str,
+        /// The manifest's file name in each plugin folder (`extension.toml`).
+        manifest: &'a str,
+    },
+}
 
 /// Where to look, and for whom. Build it with [`Search::new`]; fields may be added without
 /// breaking a caller.
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub struct Search<'a> {
-    /// The host's name: manifests are in `<data dir>/<app>/plugins`.
+    /// The host's name: manifests are in `<data dir>/<app>`, in the places `layout` says.
     pub app: &'a str,
     /// The person's data directory (`$XDG_DATA_HOME`).
     pub user: &'a Path,
@@ -20,18 +37,27 @@ pub struct Search<'a> {
     pub system: &'a [PathBuf],
     /// The newest protocol version the host speaks.
     pub protocol: u32,
+    /// Where the manifests are under the app's folder.
+    pub layout: Layout<'a>,
 }
 
 impl<'a> Search<'a> {
     /// A search for the host called `app`, in the person's directory `user` and the system's
-    /// `system`, for plugins that speak up to `protocol`.
+    /// `system`, for plugins that speak up to `protocol`, in the flat layout
+    /// (`<app>/plugins/*.toml`).
     pub fn new(app: &'a str, user: &'a Path, system: &'a [PathBuf], protocol: u32) -> Search<'a> {
         Search {
             app,
             user,
             system,
             protocol,
+            layout: Layout::Flat,
         }
+    }
+
+    /// The same search in another layout.
+    pub fn with_layout(self, layout: Layout<'a>) -> Search<'a> {
+        Search { layout, ..self }
     }
 }
 
@@ -40,6 +66,16 @@ impl<'a> Search<'a> {
 pub struct Discovery<P: Provides> {
     /// The plugins that can be used, and the ones that were found and cannot be.
     pub registry: Registry<P>,
+    /// Manifest files that were unreadable, malformed or misnamed.
+    pub rejected: Vec<Rejected<P>>,
+}
+
+/// What a scan found, before anything is ranked: every candidate of every id, in the order of
+/// the directories and then of the names.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Scan<P: Provides> {
+    /// Each manifest that was read, with where it was found. Two copies of one id are both here.
+    pub candidates: Vec<Candidate<P>>,
     /// Manifest files that were unreadable, malformed or misnamed.
     pub rejected: Vec<Rejected<P>>,
 }
@@ -61,12 +97,25 @@ impl<P: Provides> Rejected<P> {
     }
 }
 
-/// The folder under a data directory that holds the manifests.
-const FOLDER: &str = "plugins";
-
-/// Reads every manifest in the person's `<user>/<app>/plugins` and in each system directory's.
-/// A file that is not a usable manifest is listed in `rejected` and skipped; nothing here fails.
+/// Reads every manifest the search's layout names, in the person's directory and in each system
+/// directory, and ranks them. A file that is not a usable manifest is listed in `rejected` and
+/// skipped; nothing here fails.
 pub fn discover<P: Provides>(search: &Search<'_>) -> Discovery<P> {
+    let Scan {
+        candidates,
+        rejected,
+    } = scan::<P>(search);
+    Discovery {
+        registry: Registry::resolve(candidates, search.protocol),
+        rejected,
+    }
+}
+
+/// Reads every manifest as [`discover`] does and stops there: no candidate is set aside or
+/// ranked, so a host can make its own checks first and call [`Registry::resolve`] after.
+/// Read with [`Raw`](crate::manifest::Raw) as `P` when the host owns no vocabulary of its own
+/// and hands the entries on to [`reparse`](crate::reparse).
+pub fn scan<P: Provides>(search: &Search<'_>) -> Scan<P> {
     let dirs = std::iter::once((Origin::User, search.user)).chain(
         search
             .system
@@ -76,85 +125,15 @@ pub fn discover<P: Provides>(search: &Search<'_>) -> Discovery<P> {
     let mut candidates = Vec::new();
     let mut rejected = Vec::new();
     for (origin, dir) in dirs {
-        for file in manifest_files(&dir.join(search.app).join(FOLDER)) {
-            match read_candidate(&file, origin) {
+        for source in sources(dir, search.app, search.layout) {
+            match read_candidate(&source, origin) {
                 Ok(candidate) => candidates.push(candidate),
-                Err(error) => rejected.push(Rejected::new(file, error)),
+                Err(error) => rejected.push(Rejected::new(source.file, error)),
             }
         }
     }
-    Discovery {
-        registry: Registry::resolve(candidates, search.protocol),
+    Scan {
+        candidates,
         rejected,
     }
-}
-
-/// The `.toml` files directly inside `folder`, by name; none when it cannot be listed.
-fn manifest_files(folder: &Path) -> Vec<PathBuf> {
-    let Ok(entries) = fs::read_dir(folder) else {
-        return Vec::new();
-    };
-    let mut files: Vec<PathBuf> = entries
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| path.extension().is_some_and(|ext| ext == "toml") && path.is_file())
-        .collect();
-    files.sort();
-    files
-}
-
-type Failure<P> = ManifestError<<P as Provides>::Capability, <P as Provides>::Fault>;
-
-fn read_candidate<P: Provides>(file: &Path, origin: Origin) -> Result<Candidate<P>, Failure<P>> {
-    let text = fs::read_to_string(file)
-        .map_err(|error| ManifestError::Unreadable { kind: error.kind() })?;
-    let manifest = Manifest::<P>::parse(&text)?;
-    manifest.check_file_name(file)?;
-    let readiness = readiness(&manifest);
-    Ok(Candidate {
-        manifest,
-        origin,
-        readiness,
-    })
-}
-
-/// The first path the manifest names that is missing or cannot be run, or `Ready`.
-fn readiness<P: Provides>(manifest: &Manifest<P>) -> Readiness<P> {
-    let problem = manifest
-        .paths()
-        .into_iter()
-        .find_map(|(path, role)| check::<P>(path, role).err());
-    match problem {
-        Some(error) => Readiness::Unready(error),
-        None => Readiness::Ready,
-    }
-}
-
-fn check<P: Provides>(path: &Path, role: PathRole) -> Result<(), Failure<P>> {
-    let meta = fs::metadata(path).map_err(|_| ManifestError::FileMissing {
-        path: path.to_path_buf(),
-    })?;
-    let runnable = meta.is_file() && is_executable(&meta);
-    match role {
-        PathRole::Executable if !runnable => Err(ManifestError::NotExecutable {
-            path: path.to_path_buf(),
-        }),
-        PathRole::Library if !meta.is_file() => Err(ManifestError::FileMissing {
-            path: path.to_path_buf(),
-        }),
-        PathRole::Executable | PathRole::Library => Ok(()),
-    }
-}
-
-/// Whether the permission bits let anyone run the file. Where there are none to read, a file is
-/// taken to be runnable and starting it says otherwise.
-#[cfg(unix)]
-fn is_executable(meta: &fs::Metadata) -> bool {
-    use std::os::unix::fs::PermissionsExt;
-    meta.permissions().mode() & 0o111 != 0
-}
-
-#[cfg(not(unix))]
-fn is_executable(_meta: &fs::Metadata) -> bool {
-    true
 }
