@@ -23,37 +23,42 @@ pub enum Fault {
     IgnoreCancel,
 }
 
+/// Every fault with the name the command line spells it with, in the order of the variants.
+const NAMED: [(Fault, &str); 8] = [
+    (Fault::Mute, "mute"),
+    (Fault::OtherVersion, "other-version"),
+    (Fault::ProvidesNothing, "provides-nothing"),
+    (Fault::CrashOnRequest, "crash-on-request"),
+    (Fault::HangOnRequest, "hang-on-request"),
+    (Fault::Garbage, "garbage"),
+    (Fault::StderrFlood, "stderr-flood"),
+    (Fault::IgnoreCancel, "ignore-cancel"),
+];
+
 impl Fault {
     /// Every fault, in the order of the variants.
-    pub const ALL: [Fault; 8] = [
-        Fault::Mute,
-        Fault::OtherVersion,
-        Fault::ProvidesNothing,
-        Fault::CrashOnRequest,
-        Fault::HangOnRequest,
-        Fault::Garbage,
-        Fault::StderrFlood,
-        Fault::IgnoreCancel,
-    ];
+    pub const ALL: [Fault; 8] = {
+        let mut all = [Fault::Mute; 8];
+        let mut at = 0;
+        while at < NAMED.len() {
+            all[at] = NAMED[at].0;
+            at += 1;
+        }
+        all
+    };
 
     /// The name the command line spells the fault with.
     pub const fn name(self) -> &'static str {
-        match self {
-            Fault::Mute => "mute",
-            Fault::OtherVersion => "other-version",
-            Fault::ProvidesNothing => "provides-nothing",
-            Fault::CrashOnRequest => "crash-on-request",
-            Fault::HangOnRequest => "hang-on-request",
-            Fault::Garbage => "garbage",
-            Fault::StderrFlood => "stderr-flood",
-            Fault::IgnoreCancel => "ignore-cancel",
-        }
+        // The table lists every variant in order, so the discriminant is the row.
+        NAMED[self as usize].1
     }
 
     /// The fault called `name`, or `None` for a name that is not one of these (a host's own fault,
     /// for instance).
     pub fn from_name(name: &str) -> Option<Fault> {
-        Fault::ALL.into_iter().find(|fault| fault.name() == name)
+        NAMED
+            .into_iter()
+            .find_map(|(fault, spelled)| (spelled == name).then_some(fault))
     }
 }
 

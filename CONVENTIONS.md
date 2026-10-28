@@ -52,10 +52,13 @@ broke it. If a rule blocks you, say so in the change; never deviate quietly.
 ## 4. Types
 
 - **Data apart from logic.** A type's own `impl` holds construction, derivation and accessors.
-- **No `bool`** in a struct field, a parameter or a message: use a two-variant enum. Predicates
-  may return `bool`.
-- **Newtype every identifier** (`PluginId`). Parse at the boundary, once: a manifest becomes typed
-  values where it is read, and nothing past it checks again.
+- **Plain Rust first.** A `bool` is fine for a field, a return value, a local or a private
+  function. Use an enum only when a public function would read as `f(true, false)`, a third state
+  is realistic, or the value is written to disk or the wire where a named word reads better.
+- **Newtypes only when they hold a rule:** parsed or validated (`PluginId`), a unit, or an id that
+  must not be mixed with another. Otherwise the plain type. Parse at the boundary, once: a
+  manifest becomes typed values where it is read, and nothing past it checks again.
+- **One fact, one type; two-way outcomes are `Result` or `Option`;** a set that grows is data.
 - **Model absence and failure in the state.** A plugin that cannot be used is in
   `Registry::unusable` with its reason, never silently missing.
 

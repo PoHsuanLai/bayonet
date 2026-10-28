@@ -5,6 +5,10 @@ versioning.
 
 ## Unreleased
 
+### Internal
+
+- The type rule in CONVENTIONS is now "plain Rust first" (2026-10-28). `Fault`'s names are one table.
+
 ### Added
 
 - The folder layout: `Layout::Folders { dir, manifest }` and `Search::with_layout` find
